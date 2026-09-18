@@ -1,2076 +1,586 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>سَنَد M2 — PDF إلى Markdown وربط API</title>
-<style>
-:root{
-  --bg:#0b1220;
-  --panel:#111a2c;
-  --panel2:#17233b;
-  --line:#273756;
-  --text:#eaf0ff;
-  --muted:#9fb0d0;
-  --accent:#ffb020;
-  --green:#3ddc97;
-  --red:#ff6b6b;
-  --blue:#60a5fa;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  background:linear-gradient(180deg,#09101d,#0b1220 40%,#0d1526);
-  color:var(--text);
-  font-family:"Segoe UI",Tahoma,system-ui,sans-serif;
-  font-size:15px;
-  line-height:1.7;
-}
-header{
-  position:sticky;
-  top:0;
-  z-index:20;
-  background:rgba(11,18,32,.9);
-  backdrop-filter:blur(10px);
-  border-bottom:1px solid var(--line);
-}
-.header-in{
-  max-width:1500px;
-  margin:auto;
-  padding:12px 18px;
-  display:flex;
-  align-items:center;
-  gap:14px;
-  flex-wrap:wrap;
-}
-.logo{
-  width:36px;
-  height:36px;
-  border-radius:10px;
-  background:linear-gradient(135deg,var(--accent),#ff7a18);
-  display:grid;
-  place-items:center;
-  font-weight:900;
-  color:#1b1206;
-}
-h1{font-size:20px;margin:0}
-h2,h3{margin:0 0 10px}
-.muted{color:var(--muted)}
-.ltr{direction:ltr;text-align:left}
-.wrap{max-width:1500px;margin:auto;padding:18px}
-.card{
-  background:rgba(17,26,44,.88);
-  border:1px solid var(--line);
-  border-radius:14px;
-  padding:14px;
-  box-shadow:0 10px 30px rgba(0,0,0,.2);
-}
-.drop{
-  border:2px dashed var(--line);
-  text-align:center;
-  margin-bottom:16px;
-  transition:.2s;
-}
-.drop.hot{
-  border-color:var(--accent);
-  background:rgba(255,176,32,.08);
-  transform:translateY(-2px);
-}
-.grid{
-  display:grid;
-  grid-template-columns:300px minmax(0,1fr) 360px;
-  gap:16px;
-  align-items:start;
-}
-@media(max-width:1200px){
-  .grid{grid-template-columns:1fr}
-}
-.row{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  align-items:center;
-}
-.row.between{justify-content:space-between}
-.row2{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-button{
-  border:1px solid var(--line);
-  background:var(--panel2);
-  color:var(--text);
-  border-radius:10px;
-  padding:9px 12px;
-  cursor:pointer;
-  transition:.15s;
-  font:inherit;
-}
-button:hover{
-  border-color:#3d5682;
-  transform:translateY(-1px);
-}
-button.primary{
-  background:linear-gradient(135deg,var(--accent),#ff8a00);
-  color:#201404;
-  border-color:#ffd07a;
-  font-weight:700;
-}
-button.danger{
-  color:#ffd0d0;
-  border-color:#5b2730;
-}
-button.xs{
-  padding:5px 8px;
-  font-size:12px;
-  border-radius:8px;
-}
-input,select,textarea{
-  width:100%;
-  background:#0c1424;
-  border:1px solid var(--line);
-  color:var(--text);
-  border-radius:10px;
-  padding:9px 10px;
-  font:inherit;
-}
-input:focus,select:focus,textarea:focus{
-  outline:none;
-  border-color:var(--accent);
-  box-shadow:0 0 0 3px rgba(255,176,32,.12);
-}
-label{
-  display:block;
-  margin:8px 0;
-  font-size:13px;
-  color:var(--muted);
-}
-.check{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  color:var(--text);
-}
-.check input{width:auto}
-.tabs{
-  display:flex;
-  gap:6px;
-  margin:10px 0;
-  flex-wrap:wrap;
-}
-.tab{
-  padding:8px 12px;
-  border-radius:999px;
-  background:#0e1729;
-  border:1px solid var(--line);
-}
-.tab.active{
-  background:rgba(255,176,32,.14);
-  border-color:var(--accent);
-  color:#fff;
-}
-.pane{display:none}
-.pane.active{display:block}
-#mdEditor{
-  min-height:420px;
-  font-family:Consolas,Menlo,monospace;
-  font-size:13px;
-  line-height:1.8;
-  direction:ltr;
-  text-align:left;
-  white-space:pre-wrap;
-}
-.preview{
-  min-height:420px;
-  background:#fafafa;
-  color:#172033;
-  border-radius:10px;
-  padding:18px;
-  overflow:auto;
-}
-.preview h1,.preview h2,.preview h3{
-  line-height:1.25;
-  margin:1em 0 .45em;
-}
-.preview h1{
-  border-bottom:2px solid #d8dee9;
-  padding-bottom:.2em;
-}
-.preview blockquote{
-  margin:.8em 0;
-  padding:.4em .9em;
-  border-right:4px solid var(--green);
-  background:#eef7f3;
-  color:#244;
-}
-.preview code{
-  background:#eceff4;
-  padding:.1em .35em;
-  border-radius:5px;
-  font-family:Consolas,monospace;
-  direction:ltr;
-  display:inline-block;
-}
-.preview pre{
-  background:#111a2c;
-  color:#eaf0ff;
-  padding:12px;
-  border-radius:10px;
-  overflow:auto;
-  direction:ltr;
-  text-align:left;
-}
-.preview pre code{
-  background:transparent;
-  color:inherit;
-  padding:0;
-}
-.preview ul,.preview ol{
-  padding-right:1.5em;
-}
-.preview hr{
-  border:none;
-  border-top:1px dashed #c8d0dc;
-  margin:1.2em 0;
-}
-.preview .pagebreak{
-  text-align:center;
-  color:#7b8798;
-  font-size:12px;
-  border-top:1px dashed #d7dde8;
-  margin:1.2em 0;
-  padding-top:8px;
-}
-pre{
-  white-space:pre-wrap;
-  word-break:break-word;
-  background:#09111f;
-  border:1px solid var(--line);
-  border-radius:10px;
-  padding:12px;
-  max-height:420px;
-  overflow:auto;
-  direction:ltr;
-  text-align:left;
-  font-size:12px;
-}
-.doc,.endpoint{
-  border:1px solid var(--line);
-  background:#0e1729;
-  border-radius:12px;
-  padding:10px;
-  margin-bottom:8px;
-  cursor:pointer;
-  transition:.15s;
-}
-.doc:hover,.endpoint:hover{
-  border-color:#42608f;
-  transform:translateY(-1px);
-}
-.doc.active,.endpoint.active{
-  border-color:var(--accent);
-  background:rgba(255,176,32,.08);
-}
-.badge{
-  font-size:11px;
-  padding:2px 7px;
-  border-radius:999px;
-  border:1px solid var(--line);
-  color:var(--muted);
-}
-.badge.ok{
-  color:#b7ffe0;
-  border-color:#2b6d51;
-  background:rgba(61,220,151,.1);
-}
-.badge.bad{
-  color:#ffd0d0;
-  border-color:#7b3038;
-  background:rgba(255,107,107,.1);
-}
-.badge.wait{
-  color:#ffe3ae;
-  border-color:#7a5a1f;
-  background:rgba(255,176,32,.1);
-}
-.log{
-  height:140px;
-  overflow:auto;
-  background:#08101d;
-  border:1px solid var(--line);
-  border-radius:10px;
-  padding:8px;
-  font-family:Consolas,monospace;
-  font-size:11px;
-  direction:ltr;
-  text-align:left;
-}
-.log div{margin:2px 0}
-.log .info{color:#9bf}
-.log .ok{color:#7ef0c0}
-.log .warn{color:#ffd07a}
-.log .error{color:#ff9b9b}
-.response{max-height:220px}
-#toasts{
-  position:fixed;
-  right:16px;
-  bottom:16px;
-  z-index:100;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.toast{
-  background:#17233b;
-  border:1px solid var(--line);
-  border-right:4px solid var(--blue);
-  padding:10px 14px;
-  border-radius:10px;
-  box-shadow:0 12px 30px rgba(0,0,0,.35);
-  animation:in .25s ease;
-  max-width:360px;
-}
-.toast.ok{border-right-color:var(--green)}
-.toast.error{border-right-color:var(--red)}
-.toast.warn{border-right-color:var(--accent)}
-@keyframes in{
-  from{opacity:0;transform:translateY(10px)}
-}
-.small{font-size:12px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سَنَد OCR - تحويل PDF عربي ذكي</title>
+    
+    <!-- 1. تحميل pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <!-- 2. تحميل Tesseract.js (النسخة المستقرة v5) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.0/dist/tesseract.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+        p.subtitle { margin: 5px 0 0; opacity: 0.9; font-size: 0.9rem; }
+
+        .workspace {
+            padding: 20px;
+            display: grid;
+            gap: 20px;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+
+        .drop-zone:hover, .drop-zone.active {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .drop-icon { font-size: 3rem; color: var(--primary); margin-bottom: 10px; }
+        
+        input[type="file"] { display: none; }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        select, button {
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-family: inherit;
+        }
+
+        button.primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button.primary:hover { background: #1d4ed8; }
+        button.primary:disabled { background: #9ca3af; cursor: not-allowed; }
+
+        /* Progress Area */
+        .progress-area {
+            display: none;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .status-text {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        progress {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            appearance: none;
+        }
+        progress::-webkit-progress-bar { background-color: #e2e8f0; border-radius: 4px; }
+        progress::-webkit-progress-value { background-color: var(--primary); border-radius: 4px; }
+
+        /* Output Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-top: 10px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #64748b;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .output-panel {
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 0 0 8px 8px;
+            padding: 15px;
+            background: #fff;
+            direction: ltr; /* Keep editor LTR for markdown syntax visibility */
+        }
+
+        textarea#mdOutput {
+            width: 100%;
+            height: 100%;
+            min-height: 280px;
+            border: none;
+            resize: vertical;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            outline: none;
+            direction: ltr;
+            text-align: left;
+        }
+
+        pre#jsonOutput {
+            margin: 0;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            direction: ltr;
+            text-align: left;
+        }
+
+        div#previewOutput {
+            direction: rtl;
+            text-align: right;
+            line-height: 1.8;
+        }
+        
+        div#previewOutput h1, div#previewOutput h2, div#previewOutput h3 {
+            color: var(--text);
+            margin-top: 1em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: flex-end;
+        }
+
+        .action-btn {
+            background: white;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .action-btn:hover { background: #f1f5f9; }
+
+        .loader-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.9);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
 </head>
 <body>
 
-<header>
-  <div class="header-in">
-    <div class="logo">س</div>
-    <div>
-      <h1>سَنَد M2</h1>
-      <div class="muted small">PDF → Markdown + ربط JSON/API</div>
+<div class="container">
+    <header>
+        <h1>📄 سَنَد OCR</h1>
+        <p class="subtitle">تحويل ملفات PDF العربية المعقدة إلى Markdown نظيف باستخدام الذكاء الاصطناعي</p>
+    </header>
+
+    <div class="workspace">
+        
+        <!-- Upload Section -->
+        <div class="drop-zone" id="dropZone">
+            <div class="drop-icon">☁️</div>
+            <strong>اسحب ملف الـ PDF هنا</strong><br>
+            <span style="font-size:0.9rem; color:#666;">أو انقر للاختيار من جهازك</span>
+            <input type="file" id="fileInput" accept=".pdf">
+        </div>
+
+        <!-- Settings & Start -->
+        <div class="controls">
+            <div style="display:flex; gap:10px; align-items:center;">
+                <label>اللغة:</label>
+                <select id="langSelect">
+                    <option value="ara+eng">عربي + إنجليزي (موصى به)</option>
+                    <option value="ara">عربي فقط</option>
+                    <option value="eng">إنجليزي فقط</option>
+                </select>
+            </div>
+            <button class="primary" id="startBtn" disabled>بدء التحويل بالـ OCR</button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-area" id="progressArea">
+            <span class="status-text" id="statusText">جاهز للبدء...</span>
+            <progress id="globalProg" value="0" max="100"></progress>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" style="display:none;">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('md')">Markdown الخام</button>
+                <button class="tab-btn" onclick="switchTab('preview')">معاينة القراءة</button>
+                <button class="tab-btn" onclick="switchTab('json')">JSON (للربط)</button>
+            </div>
+
+            <div class="output-panel">
+                <!-- MD Tab -->
+                <textarea id="mdOutput" readonly></textarea>
+                
+                <!-- Preview Tab -->
+                <div id="previewOutput" style="display:none;"></div>
+                
+                <!-- JSON Tab -->
+                <pre id="jsonOutput" style="display:none;"></pre>
+            </div>
+
+            <div class="actions">
+                <button class="action-btn" onclick="copyContent()">📋 نسخ المحتوى</button>
+                <button class="action-btn" onclick="downloadFile('md')">⬇️ تنزيل .md</button>
+                <button class="action-btn" onclick="downloadFile('json')">⬇️ تنزيل .json</button>
+            </div>
+        </div>
+
     </div>
-    <div style="flex:1"></div>
-    <div class="row">
-      <button data-action="pick">📄 اختيار ملف</button>
-      <button data-action="demo">🧪 تجربة</button>
-    </div>
-  </div>
-</header>
+</div>
 
-<main class="wrap">
-  <section class="card drop" id="dropCard">
-    <input id="fileInput" type="file" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain" multiple hidden />
-    <h2>أفلت ملفات PDF أو MD هنا</h2>
-    <p class="muted">
-      التحويل يحدث داخل متصفحك. الإرسال إلى منصتك لا يتم إلا عند الضغط على زر الإرسال أو تفعيل الإرسال التلقائي.
-    </p>
-    <div class="row between" style="justify-content:center">
-      <button class="primary" data-action="pick">فتح ملفات</button>
-      <button data-action="clearDocs">مسح القائمة</button>
-    </div>
-  </section>
-
-  <div class="grid">
-    <aside class="card">
-      <h3>الملفات</h3>
-      <div id="docsList"><p class="muted">لا ملفات بعد.</p></div>
-
-      <h3 style="margin-top:14px">سجل التشغيل</h3>
-      <div id="logBox" class="log"></div>
-    </aside>
-
-    <section class="card">
-      <div class="row between">
-        <h3 id="currentTitle">لا مستند محدد</h3>
-        <span id="currentMeta" class="muted small"></span>
-      </div>
-
-      <div class="tabs">
-        <button class="tab active" data-tab="md">Markdown</button>
-        <button class="tab" data-tab="preview">معاينة</button>
-        <button class="tab" data-tab="json">بنية JSON</button>
-        <button class="tab" data-tab="extract">بيانات مستخرجة</button>
-      </div>
-
-      <div class="pane active" id="pane-md">
-        <textarea id="mdEditor" spellcheck="false" placeholder="# العنوان&#10;&#10;ابدأ التحويل أو الصق Markdown هنا..."></textarea>
-      </div>
-
-      <div class="pane" id="pane-preview">
-        <div id="preview" class="preview"><p class="muted">لا معاينة.</p></div>
-      </div>
-
-      <div class="pane" id="pane-json">
-        <pre id="jsonView">{}</pre>
-      </div>
-
-      <div class="pane" id="pane-extract">
-        <pre id="extractView">{}</pre>
-      </div>
-
-      <div class="row" style="margin-top:12px">
-        <button data-action="copyMd">نسخ</button>
-        <button data-action="downloadMd">تنزيل .md</button>
-        <button data-action="downloadJson">تنزيل .json</button>
-        <button data-action="saveDoc">حفظ محلي</button>
-        <button class="primary" data-action="pushCurrent">إرسال إلى المنصة</button>
-      </div>
-    </section>
-
-    <aside class="card">
-      <h3>نقاط النهاية</h3>
-      <div id="endpointList"><p class="muted">لا نقاط بعد. أضف رابط منصتك لتفعيل الإرسال/الجلب.</p></div>
-      <button data-action="newEndpoint">+ إضافة نقطة نهاية</button>
-
-      <div id="endpointForm" hidden style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
-        <label>الاسم
-          <input id="epName" placeholder="منصتي" />
-        </label>
-
-        <label>الرابط
-          <input id="epUrl" class="ltr" placeholder="https://api.example.com/v1/documents" />
-        </label>
-
-        <div class="row2">
-          <label>الطريقة
-            <select id="epMethod">
-              <option>POST</option>
-              <option>PUT</option>
-              <option>PATCH</option>
-            </select>
-          </label>
-          <label>النمط
-            <select id="epMode">
-              <option value="json">JSON</option>
-              <option value="form">multipart</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="row2">
-          <label>حقل Markdown
-            <input id="epField" value="markdown" />
-          </label>
-          <label>المصادقة
-            <select id="epAuth">
-              <option value="none">بدون</option>
-              <option value="bearer">Bearer</option>
-              <option value="header">X-API-Key</option>
-              <option value="basic">Basic</option>
-            </select>
-          </label>
-        </div>
-
-        <label>قيمة المصادقة
-          <input id="epToken" class="ltr" placeholder="token أو user:pass" />
-        </label>
-
-        <label>ترويسات إضافية
-          <textarea id="epHeaders" rows="2" class="ltr" placeholder="X-Workspace: acme"></textarea>
-        </label>
-
-        <label>مسار الجلب داخل JSON
-          <input id="epPullPath" class="ltr" placeholder="data.attributes.markdown" />
-        </label>
-
-        <label class="check">
-          <input id="epAuto" type="checkbox" />
-          إرسال تلقائي بعد تحويل PDF
-        </label>
-
-        <input id="epEditingId" type="hidden" />
-
-        <div class="row">
-          <button class="primary" data-action="saveEndpoint">حفظ</button>
-          <button data-action="cancelEndpoint">إلغاء</button>
-        </div>
-      </div>
-
-      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
-        <h3>عمليات الربط</h3>
-        <div class="row">
-          <button data-action="pingEndpoint">اختبار الاتصال</button>
-          <button class="primary" data-action="pushCurrent">إرسال الحالي</button>
-        </div>
-        <pre id="apiResponse" class="response">لم يتم إرسال طلب بعد.</pre>
-      </div>
-
-      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
-        <h3>جلب Markdown من رابط</h3>
-        <input id="pullUrl" class="ltr" placeholder="https://api.example.com/v1/documents/42.md" />
-        <input id="pullPath" class="ltr" placeholder="مسار الحقل إذا كان الرد JSON (اختياري)" />
-        <button data-action="pullUrl" style="margin-top:8px">جلب وفتح</button>
-      </div>
-
-      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
-        <h3>مثال كود</h3>
-        <select id="snippetLang">
-          <option value="curl">cURL</option>
-          <option value="js">JavaScript</option>
-          <option value="python">Python</option>
-        </select>
-        <pre id="snippet"></pre>
-        <button data-action="copySnippet">نسخ الكود</button>
-      </div>
-    </aside>
-  </div>
-</main>
-
-<div id="toasts"></div>
+<!-- Loading Overlay for heavy operations -->
+<div class="loader-overlay" id="loaderOverlay">
+    <div class="spinner"></div>
+    <h3 id="loaderMsg">جارٍ تحميل محرك التعرف الضوئي...</h3>
+    <p style="color:#666; font-size:0.9rem;">قد يستغرق هذا دقيقة واحدة لأول مرة فقط.</p>
+</div>
 
 <script>
-(function(){
-"use strict";
+    // Configuration
+    const WORKER_PATH = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.0/dist/worker.min.js';
+    const CORE_PATH = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0/tesseract-core.wasm.js';
+    const LANG_DATA_PATH = 'https://tessdata.projectnaptha.com/4.0.0';
 
-var $ = function(sel, root){ return (root || document).querySelector(sel); };
-var $$ = function(sel, root){ return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+    // State
+    let currentPdfBuffer = null;
+    let fileName = '';
+    let tesseractWorker = null;
+    let isProcessing = false;
 
-var state = {
-  docs: [],
-  currentId: null,
-  endpoints: [],
-  selectedEndpointId: null,
-  busy: false
-};
+    // DOM Elements
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const startBtn = document.getElementById('startBtn');
+    const progressArea = document.getElementById('progressArea');
+    const statusText = document.getElementById('statusText');
+    const globalProg = document.getElementById('globalProg');
+    const resultsSection = document.getElementById('resultsSection');
+    const mdOutput = document.getElementById('mdOutput');
+    const previewOutput = document.getElementById('previewOutput');
+    const jsonOutput = document.getElementById('jsonOutput');
+    const loaderOverlay = document.getElementById('loaderOverlay');
+    const loaderMsg = document.getElementById('loaderMsg');
 
-var STORAGE = {
-  endpoints: "sanad.m2.endpoints",
-  savedDocs: "sanad.m2.savedDocs"
-};
+    // Initialize PDF.js Worker
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    } else {
+        alert("خطأ: فشل تحميل مكتبة pdf.js. تأكد من اتصال الإنترنت.");
+    }
 
-function loadLS(key, fallback){
-  try {
-    var v = localStorage.getItem(key);
-    return v ? JSON.parse(v) : fallback;
-  } catch(e){
-    return fallback;
-  }
-}
+    // --- Event Listeners ---
 
-function saveLS(key, value){
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch(e){
-    log("تعذّر الحفظ المحلي: " + e.message, "warn");
-    return false;
-  }
-}
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    ['dragenter', 'dragover'].forEach(evt => 
+        dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('active');
+        })
+    );
 
-function uid(prefix){
-  return (prefix || "id") + "_" + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
-}
+    ['dragleave', 'drop'].forEach(evt => 
+        dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('active');
+            if (evt === 'drop' && e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        })
+    );
 
-function escapeHtml(s){
-  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
-    return {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      "\"": "&quot;",
-      "'": "&#39;"
-    }[c];
-  });
-}
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
 
-function fmtBytes(n){
-  n = Number(n) || 0;
-  if(n < 1024) return n + " B";
-  if(n < 1048576) return (n / 1024).toFixed(1) + " KB";
-  return (n / 1048576).toFixed(2) + " MB";
-}
+    startBtn.addEventListener('click', processPDF);
 
-function timeNow(){
-  var d = new Date();
-  return ("0" + d.getHours()).slice(-2) + ":" +
-         ("0" + d.getMinutes()).slice(-2) + ":" +
-         ("0" + d.getSeconds()).slice(-2);
-}
+    // --- Functions ---
 
-function debounce(fn, ms){
-  var t = null;
-  return function(){
-    var args = arguments;
-    var self = this;
-    clearTimeout(t);
-    t = setTimeout(function(){
-      fn.apply(self, args);
-    }, ms || 250);
-  };
-}
-
-function log(msg, type){
-  var box = $("#logBox");
-  if(!box) return;
-  var div = document.createElement("div");
-  div.className = type || "info";
-  div.textContent = timeNow() + "  " + msg;
-  box.appendChild(div);
-  while(box.children.length > 250) box.removeChild(box.firstChild);
-  box.scrollTop = box.scrollHeight;
-}
-
-function toast(msg, type){
-  var box = $("#toasts");
-  if(!box) return;
-  var el = document.createElement("div");
-  el.className = "toast " + (type || "");
-  el.textContent = msg;
-  box.appendChild(el);
-  setTimeout(function(){
-    el.style.opacity = "0";
-    el.style.transform = "translateY(8px)";
-    setTimeout(function(){ el.remove(); }, 300);
-  }, 3500);
-}
-
-function getCurrentDoc(){
-  for(var i = 0; i < state.docs.length; i++){
-    if(state.docs[i].id === state.currentId) return state.docs[i];
-  }
-  return null;
-}
-
-function getSelectedEndpoint(){
-  for(var i = 0; i < state.endpoints.length; i++){
-    if(state.endpoints[i].id === state.selectedEndpointId) return state.endpoints[i];
-  }
-  return state.endpoints[0] || null;
-}
-
-/* ---------- PDF.js loader ---------- */
-
-var PDF_CDNS = [
-  {
-    lib: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js",
-    worker: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js"
-  },
-  {
-    lib: "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js",
-    worker: "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js"
-  },
-  {
-    lib: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
-    worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"
-  }
-];
-
-var pdfPromise = null;
-
-function loadScript(src){
-  return new Promise(function(resolve, reject){
-    var s = document.createElement("script");
-    s.src = src;
-    s.onload = resolve;
-    s.onerror = function(){ reject(new Error("فشل تحميل: " + src)); };
-    document.head.appendChild(s);
-  });
-}
-
-function getPdfJs(){
-  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-
-  if(!pdfPromise){
-    pdfPromise = new Promise(async function(resolve, reject){
-      for(var i = 0; i < PDF_CDNS.length; i++){
-        var c = PDF_CDNS[i];
-        try {
-          log("تحميل محرك PDF من " + c.lib.split("/")[2], "info");
-          await loadScript(c.lib);
-          if(window.pdfjsLib){
-            window.pdfjsLib.GlobalWorkerOptions.workerSrc = c.worker;
-            log("محرك PDF جاهز، إصدار " + window.pdfjsLib.version, "ok");
-            resolve(window.pdfjsLib);
+    function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            alert('الرجاء اختيار ملف PDF فقط.');
             return;
-          }
-        } catch(e){
-          log(e.message, "warn");
         }
-      }
-      reject(new Error("تعذّر تحميل محرك pdf.js. تحقق من الإنترنت أو افتح الملف عبر خادم محلي."));
-    });
-  }
-
-  return pdfPromise;
-}
-
-/* ---------- text helpers ---------- */
-
-function cleanText(s){
-  return String(s || "")
-    .replace(/\u00AD/g, "")
-    .replace(/[\u200B-\u200D\uFEFF]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function isRTLText(s){
-  var letters = String(s || "").replace(/\s/g, "");
-  if(!letters) return false;
-
-  var rtl = 0;
-  for(var i = 0; i < letters.length; i++){
-    var code = letters.charCodeAt(i);
-    if(
-      (code >= 0x0600 && code <= 0x06FF) ||
-      (code >= 0x0750 && code <= 0x077F) ||
-      (code >= 0x08A0 && code <= 0x08FF) ||
-      (code >= 0xFB50 && code <= 0xFDFF) ||
-      (code >= 0xFE70 && code <= 0xFEFF)
-    ){
-      rtl++;
-    }
-  }
-
-  return rtl / letters.length > 0.34;
-}
-
-function groupTextItems(items, pageHeight){
-  var spans = [];
-
-  for(var i = 0; i < items.length; i++){
-    var it = items[i];
-    if(!it) continue;
-
-    var str = it.str || "";
-    if(!cleanText(str)) continue;
-
-    var tr = it.transform || [1,0,0,1,0,0];
-    var x = Number(tr[4]) || 0;
-    var y = Number(pageHeight) - (Number(tr[5]) || 0);
-    var size = Math.abs(Number(tr[3])) || Number(it.height) || 10;
-    var width = Number(it.width) || 0;
-
-    spans.push({
-      str: str,
-      x: x,
-      y: y,
-      width: width,
-      size: size
-    });
-  }
-
-  spans.sort(function(a,b){
-    return (a.y - b.y) || (a.x - b.x);
-  });
-
-  var lines = [];
-  var cur = null;
-  var tol = 3;
-
-  for(var j = 0; j < spans.length; j++){
-    var sp = spans[j];
-    if(!cur || Math.abs(sp.y - cur.y) > tol){
-      if(cur) lines.push(cur);
-      cur = {
-        y: sp.y,
-        size: sp.size,
-        parts: []
-      };
-    }
-    cur.parts.push(sp);
-    if(sp.size > cur.size) cur.size = sp.size;
-  }
-
-  if(cur) lines.push(cur);
-
-  return lines.map(function(line){
-    var parts = line.parts.slice();
-    var sample = parts.map(function(p){ return p.str; }).join(" ");
-    var rtl = isRTLText(sample);
-
-    parts.sort(function(a,b){
-      return rtl ? (b.x - a.x) : (a.x - b.x);
-    });
-
-    var text = "";
-    var prev = null;
-
-    for(var k = 0; k < parts.length; k++){
-      var p = parts[k];
-      var s = cleanText(p.str);
-      if(!s) continue;
-
-      if(prev){
-        var gap = rtl
-          ? (prev.x - (p.x + p.width))
-          : (p.x - (prev.x + prev.width));
-
-        if(gap > Math.max(1, p.size * 0.18)) text += " ";
-      }
-
-      text += s;
-      prev = p;
+        fileName = file.name;
+        const reader = new FileReader();
+        reader.onload = function() {
+            currentPdfBuffer = new Uint8Array(this.result);
+            startBtn.disabled = false;
+            statusText.textContent = `تم تحميل: ${fileName}`;
+            progressArea.style.display = 'block';
+            globalProg.value = 0;
+            resultsSection.style.display = 'none';
+        };
+        reader.readAsArrayBuffer(file);
     }
 
-    return {
-      text: cleanText(text),
-      size: line.size,
-      y: line.y
-    };
-  }).filter(function(l){
-    return l.text;
-  });
-}
+    async function initTesseract(langCode) {
+        if (tesseractWorker) {
+            await tesseractWorker.terminate();
+            tesseractWorker = null;
+        }
 
-function isHeadingLine(line, bodySize, text){
-  if(text.length > 180) return false;
-  if(line.size > bodySize * 1.15) return true;
-  if(line.size > bodySize * 1.05 && text.length < 80 && !/[.:،؛!?]$/.test(text)) return true;
-  return false;
-}
+        loaderOverlay.style.display = 'flex';
+        loaderMsg.textContent = "جارٍ تحميل محرك OCR واللغات...";
+        
+        try {
+            // Create worker with specific paths to avoid CORS/network issues on some servers
+            tesseractWorker = await Tesseract.createWorker({
+                logger: m => {
+                    // Optional: Log internal messages to console for debugging
+                    // console.log(m.status); 
+                },
+                workerPath: WORKER_PATH,
+                corePath: CORE_PATH,
+                langPath: LANG_DATA_PATH
+            });
 
-function headingLevel(size, bodySize){
-  var r = size / (bodySize || 12);
-  if(r > 1.8) return 1;
-  if(r > 1.5) return 2;
-  if(r > 1.25) return 3;
-  if(r > 1.1) return 4;
-  return 5;
-}
-
-function isBullet(t){
-  return /^\s*[•·▪▫◦∙●○\-–—]\s+/.test(t);
-}
-
-function stripBullet(t){
-  return t.replace(/^\s*[•·▪▫◦∙●○\-–—]\s+/, "").trim();
-}
-
-function isOrdered(t){
-  return /^\s*(?:\d{1,3}|[٠-٩۰-۹]+)\s*[.)]\s+/.test(t);
-}
-
-function stripOrdered(t){
-  return t.replace(/^\s*(?:\d{1,3}|[٠-٩۰-۹]+)\s*[.)]\s+/, "").trim();
-}
-
-function pagesToMarkdown(pages, info, fileName){
-  var sizes = [];
-  pages.forEach(function(p){
-    p.lines.forEach(function(l){
-      sizes.push(l.size);
-    });
-  });
-
-  sizes.sort(function(a,b){ return a - b; });
-  var bodySize = sizes.length ? sizes[Math.floor(sizes.length / 2)] : 12;
-
-  var title = cleanText(info && info.Title) || String(fileName || "مستند").replace(/\.pdf$/i, "");
-  var md = ["# " + title];
-
-  pages.forEach(function(page){
-    md.push("");
-    md.push("<!-- صفحة " + page.number + " -->");
-
-    var paragraph = [];
-
-    function flush(){
-      if(paragraph.length){
-        md.push(cleanText(paragraph.join(" ")));
-        paragraph = [];
-      }
+            loaderMsg.textContent = "جارٍ تجهيز النموذج اللغوي...";
+            
+            // Load languages. 'ara+eng' loads both models.
+            await tesseractWorker.loadLanguage(langCode);
+            await tesseractWorker.initialize(langCode);
+            
+            loaderOverlay.style.display = 'none';
+            return true;
+        } catch (err) {
+            console.error(err);
+            loaderOverlay.style.display = 'none';
+            alert("فشل تحميل محرك OCR:\n" + err.message + "\n\nتأكد من السماح بالاتصال بـ cdn.jsdelivr.net و tessdata.projectnaptha.com");
+            return false;
+        }
     }
 
-    page.lines.forEach(function(line){
-      var text = line.text;
-      if(!text){
-        flush();
-        return;
-      }
+    async function processPDF() {
+        if (!currentPdfBuffer || isProcessing) return;
+        isProcessing = true;
+        startBtn.disabled = true;
+        startBtn.textContent = "جارٍ العمل...";
+        progressArea.style.display = 'block';
+        resultsSection.style.display = 'none';
 
-      if(isHeadingLine(line, bodySize, text)){
-        flush();
-        md.push(new Array(headingLevel(line.size, bodySize) + 1).join("#") + " " + text);
-      } else if(isBullet(text)){
-        flush();
-        md.push("- " + stripBullet(text));
-      } else if(isOrdered(text)){
-        flush();
-        md.push("1. " + stripOrdered(text));
-      } else {
-        paragraph.push(text);
-        if(/[.:،؛!?]$/.test(text) && paragraph.length > 2) flush();
-      }
-    });
+        const lang = document.getElementById('langSelect').value;
 
-    flush();
-  });
+        // 1. Init Engine
+        const engineReady = await initTesseract(lang);
+        if (!engineReady) {
+            resetUI();
+            return;
+        }
 
-  return md.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
-}
+        try {
+            // 2. Load PDF Doc
+            statusText.textContent = "فتح ملف PDF...";
+            const loadingTask = pdfjsLib.getDocument({ data: currentPdfBuffer });
+            const pdfDoc = await loadingTask.promise;
+            const totalPages = pdfDoc.numPages;
+            
+            let fullMarkdown = `# ${fileName.replace('.pdf','')}\n\n`;
+            let jsonStructure = {
+                meta: { title: fileName, pages: totalPages, lang: lang, date: new Date().toISOString() },
+                sections: []
+            };
 
-async function convertPdf(file){
-  var pdfjs = await getPdfJs();
-  var buf = await file.arrayBuffer();
+            // 3. Loop Pages
+            for (let i = 1; i <= totalPages; i++) {
+                const pct = Math.round((i / totalPages) * 100);
+                globalProg.value = pct;
+                statusText.textContent = `قراءة الصفحة ${i} من ${totalPages} (${pct}%)`;
 
-  var pdf = await pdfjs.getDocument({
-    data: new Uint8Array(buf),
-    isEvalSupported: false,
-    useSystemFonts: false
-  }).promise;
+                const page = await pdfDoc.getPage(i);
+                
+                // Render at high resolution (scale 2 or 3) for better OCR accuracy
+                const viewport = page.getViewport({ scale: 2.0 }); 
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
 
-  var meta = { info: {} };
-  try {
-    meta = await pdf.getMetadata();
-  } catch(e){}
+                await page.render({ canvasContext: ctx, viewport }).promise;
 
-  var pages = [];
+                // Perform OCR
+                const { data: { text } } = await tesseractWorker.recognize(canvas);
+                
+                // Clean text: Remove excessive whitespace but keep paragraphs
+                let cleanText = text.trim()
+                                   .replace(/\r/g, '') // Windows CR
+                                   .replace(/[ \t]+/g, ' ') // Multiple spaces -> single
+                                   .replace(/\n{3,}/g, '\n\n'); // Multiple newlines -> double
 
-  for(var i = 1; i <= pdf.numPages; i++){
-    var page = await pdf.getPage(i);
-    var viewport = page.getViewport({ scale: 1 });
-    var tc = await page.getTextContent();
+                // Append to Markdown
+                fullMarkdown += `<!-- صفحة ${i} -->\n\n${cleanText}\n\n---\n\n`;
 
-    pages.push({
-      number: i,
-      lines: groupTextItems(tc.items, viewport.height)
-    });
+                // Append to JSON Structure
+                jsonStructure.sections.push({
+                    page: i,
+                    content: cleanText,
+                    charCount: cleanText.length
+                });
 
-    if(i % 5 === 0 || i === pdf.numPages){
-      log("تمت قراءة صفحة " + i + " من " + pdf.numPages, "info");
+                // Yield to UI thread to prevent freezing
+                await new Promise(r => setTimeout(r, 0));
+            }
+
+            // 4. Finalize
+            fullMarkdown = fullMarkdown.trim();
+            mdOutput.value = fullMarkdown;
+            jsonOutput.textContent = JSON.stringify(jsonStructure, null, 2);
+            
+            renderPreview(fullMarkdown);
+            
+            resultsSection.style.display = 'block';
+            switchTab('md'); // Show MD by default
+            
+            statusText.textContent = "اكتمل التحويل بنجاح! ✅";
+            globalProg.value = 100;
+
+        } catch (err) {
+            console.error(err);
+            alert("حدث خطأ أثناء المعالجة: " + err.message);
+        } finally {
+            isProcessing = false;
+            startBtn.disabled = false;
+            startBtn.textContent = "بدء التحويل بالـ OCR";
+            
+            // Terminate worker to free memory after completion? 
+            // Keeping it alive allows faster processing of next file without reload.
+            // But good practice to terminate if idle long time. For now, we keep it.
+        }
     }
 
-    await new Promise(function(r){ setTimeout(r, 0); });
-  }
-
-  try {
-    await pdf.destroy();
-  } catch(e){}
-
-  var markdown = pagesToMarkdown(pages, meta.info || {}, file.name);
-  return makeDocFromMarkdown(file.name, markdown, "pdf", file.size, meta.info || {});
-}
-
-function makeDocFromMarkdown(name, markdown, type, size, info){
-  var md = String(markdown || "").trim() + "\n";
-  var stats = computeStats(md);
-
-  var doc = {
-    id: uid("doc"),
-    name: name || "document.md",
-    type: type || "md",
-    size: size || new Blob([md]).size,
-    markdown: md,
-    stats: stats,
-    structure: buildStructure(md, (info && info.Title) || name || "مستند"),
-    extracted: extractData(md),
-    createdAt: new Date().toISOString(),
-    saved: false
-  };
-
-  return doc;
-}
-
-function computeStats(md){
-  var words = (String(md).match(/\S+/g) || []).length;
-  return {
-    words: words,
-    chars: String(md).length,
-    headings: (String(md).match(/^#{1,6}\s/gm) || []).length,
-    lists: (String(md).match(/^\s*(?:[-*+]\s|\d+[.)]\s)/gm) || []).length,
-    pages: (String(md).match(/<!--\s*صفحة\s*\d+\s*-->/g) || []).length || 1,
-    readingMinutes: Math.max(1, Math.round(words / 220))
-  };
-}
-
-function buildStructure(md, title){
-  var lines = String(md).split("\n");
-  var outline = [];
-  var stack = [{ level: 0, title: title || "المستند", path: [] }];
-
-  for(var i = 0; i < lines.length; i++){
-    var m = lines[i].match(/^(#{1,6})\s+(.*)$/);
-    if(!m) continue;
-
-    var level = m[1].length;
-
-    while(stack.length > 1 && stack[stack.length - 1].level >= level){
-      stack.pop();
+    function resetUI() {
+        isProcessing = false;
+        startBtn.disabled = false;
+        startBtn.textContent = "بدء التحويل بالـ OCR";
+        progressArea.style.display = 'none';
+        resultsSection.style.display = 'none';
     }
 
-    var parent = stack[stack.length - 1];
-    var node = {
-      level: level,
-      title: cleanText(m[2]),
-      path: parent.path.concat(parent.title ? [parent.title] : [])
-    };
+    // --- Simple Markdown Renderer for Preview ---
+    function renderPreview(md) {
+        let html = md
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/^\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/_(.*?)_/gim, '<em>$1</em>')
+            .replace(/^\- (.*)$/gim, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/gis, '<ul>$1</ul>') // Wrap lists roughly
+            .replace(/\n/gim, '<br>'); // Line breaks
+        
+        // Fix nested ul issue from regex above
+        html = html.replace(/<ul>(.*?)<\/ul>/gs, (match, inner) => {
+             return `<ul>${inner}</ul>`;
+        });
 
-    outline.push(node);
-    stack.push(node);
-  }
-
-  return {
-    meta: {
-      title: title || "مستند",
-      generatedAt: new Date().toISOString(),
-      stats: computeStats(md)
-    },
-    outline: outline
-  };
-}
-
-function extractData(md){
-  var text = String(md || "");
-
-  function grab(re){
-    var m = text.match(re);
-    if(!m) return [];
-
-    var uniq = {};
-    m.forEach(function(x){
-      x = cleanText(x);
-      if(x) uniq[x] = 1;
-    });
-
-    return Object.keys(uniq);
-  }
-
-  return {
-    emails: grab(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g),
-    urls: grab(/https?:\/\/[^\s)\]]+/g),
-    phones: grab(/(?:\+\d{1,3}[\s-]?)?(?:\d[\s-]?){8,14}\d/g),
-    money: grab(/\b\d{1,3}(?:[,\u066C]\d{3})*(?:\.\d+)?\s*(?:ريال|درهم|دينار|جنيه|USD|SAR|AED|EGP|\$|€|£)/g),
-    dates: grab(/\b\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b/g),
-    articles: grab(/(?:المادة|البند|الفقرة|Clause|Article|Section)\s*\d+[\d.\/-]*/gi)
-  };
-}
-
-/* ---------- rendering ---------- */
-
-function renderDocs(){
-  var box = $("#docsList");
-
-  if(!state.docs.length){
-    box.innerHTML = '<p class="muted">لا ملفات بعد.</p>';
-    return;
-  }
-
-  box.innerHTML = state.docs.map(function(d){
-    return '<div class="doc ' + (d.id === state.currentId ? "active" : "") + '" data-doc="' + d.id + '">' +
-      '<div class="row between"><b>' + escapeHtml(d.name) + '</b><span class="badge">' + escapeHtml(d.type.toUpperCase()) + '</span></div>' +
-      '<div class="muted small">' +
-        fmtBytes(d.size) + ' · ' +
-        (d.stats ? d.stats.pages : "-") + ' صفحة · ' +
-        (d.stats ? d.stats.words : 0) + ' كلمة' +
-        (d.saved ? ' · محفوظ' : '') +
-      '</div>' +
-      '<div class="row" style="margin-top:7px">' +
-        '<button class="xs" data-action="openDoc" data-id="' + d.id + '">فتح</button>' +
-        '<button class="xs danger" data-action="deleteDoc" data-id="' + d.id + '">حذف</button>' +
-      '</div>' +
-    '</div>';
-  }).join("");
-}
-
-function renderCurrent(){
-  var d = getCurrentDoc();
-
-  $("#currentTitle").textContent = d ? d.name : "لا مستند محدد";
-  $("#currentMeta").textContent = d
-    ? (d.stats.words + " كلمة · " + fmtBytes(d.markdown.length) + " · " + d.stats.pages + " صفحة")
-    : "";
-
-  $("#mdEditor").value = d ? d.markdown : "";
-
-  renderPreview();
-  renderJson();
-  renderExtract();
-  renderSnippet();
-}
-
-function refreshViews(){
-  var d = getCurrentDoc();
-  if(!d) return;
-
-  $("#currentMeta").textContent =
-    d.stats.words + " كلمة · " +
-    fmtBytes(d.markdown.length) + " · " +
-    d.stats.pages + " صفحة";
-
-  renderPreview();
-  renderJson();
-  renderExtract();
-}
-
-function renderPreview(){
-  var d = getCurrentDoc();
-  $("#preview").innerHTML = d
-    ? renderMarkdownPreview(d.markdown)
-    : '<p class="muted">لا معاينة.</p>';
-}
-
-function renderJson(){
-  var d = getCurrentDoc();
-  $("#jsonView").textContent = d ? JSON.stringify(d.structure, null, 2) : "{}";
-}
-
-function renderExtract(){
-  var d = getCurrentDoc();
-  $("#extractView").textContent = d ? JSON.stringify(d.extracted, null, 2) : "{}";
-}
-
-function renderMarkdownPreview(md){
-  var lines = String(md || "").split("\n");
-  var out = [];
-  var para = [];
-  var list = [];
-  var listOrdered = false;
-  var inCode = false;
-  var codeBuf = [];
-
-  function flushPara(){
-    if(para.length){
-      out.push('<p dir="auto">' + inlineMd(escapeHtml(para.join(" "))) + '</p>');
-      para = [];
-    }
-  }
-
-  function flushList(){
-    if(list.length){
-      var tag = listOrdered ? "ol" : "ul";
-      out.push(
-        "<" + tag + ">" +
-        list.map(function(x){
-          return '<li dir="auto">' + inlineMd(escapeHtml(x)) + "</li>";
-        }).join("") +
-        "</" + tag + ">"
-      );
-      list = [];
-    }
-  }
-
-  function flushCode(){
-    if(codeBuf.length){
-      out.push("<pre><code>" + escapeHtml(codeBuf.join("\n")) + "</code></pre>");
-      codeBuf = [];
-    }
-  }
-
-  for(var i = 0; i < lines.length; i++){
-    var raw = lines[i];
-
-    if(raw.indexOf("```") === 0){
-      flushPara();
-      flushList();
-      if(inCode){
-        flushCode();
-        inCode = false;
-      } else {
-        inCode = true;
-      }
-      continue;
+        previewOutput.innerHTML = html;
     }
 
-    if(inCode){
-      codeBuf.push(raw);
-      continue;
+    // --- Tab Switching ---
+    window.switchTab = function(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+
+        mdOutput.style.display = tabName === 'md' ? 'block' : 'none';
+        previewOutput.style.display = tabName === 'preview' ? 'block' : 'none';
+        jsonOutput.style.display = tabName === 'json' ? 'block' : 'none';
     }
 
-    if(!raw.trim()){
-      flushPara();
-      flushList();
-      continue;
+    // --- Utilities ---
+    window.copyContent = function() {
+        const activeTab = document.querySelector('.tab-btn.active').innerText;
+        let content = "";
+        if(activeTab.includes('Markdown')) content = mdOutput.value;
+        else if(activeTab.includes('JSON')) content = jsonOutput.textContent;
+        else content = previewOutput.innerText;
+
+        navigator.clipboard.writeText(content).then(() => alert("تم النسخ!"));
     }
 
-    var h = raw.match(/^(#{1,6})\s+(.*)$/);
-    if(h){
-      flushPara();
-      flushList();
-      var lv = h[1].length;
-      out.push("<h" + lv + ' dir="auto">' + inlineMd(escapeHtml(h[2])) + "</h" + lv + ">");
-      continue;
-    }
-
-    if(/^(-{3,}|\*{3,}|_{3,})$/.test(raw.trim())){
-      flushPara();
-      flushList();
-      out.push("<hr>");
-      continue;
-    }
-
-    var bq = raw.match(/^>\s?(.*)$/);
-    if(bq){
-      flushPara();
-      flushList();
-      out.push('<blockquote dir="auto">' + inlineMd(escapeHtml(bq[1])) + "</blockquote>");
-      continue;
-    }
-
-    var li = raw.match(/^\s*([-*+]|\d+[.)])\s+(.*)$/);
-    if(li){
-      flushPara();
-      var ordered = /^\d/.test(li[1]);
-      if(list.length && ordered !== listOrdered) flushList();
-      listOrdered = ordered;
-      list.push(li[2]);
-      continue;
-    }
-
-    var pb = raw.match(/<!--\s*صفحة\s*(\d+)\s*-->/);
-    if(pb){
-      flushPara();
-      flushList();
-      out.push('<div class="pagebreak">صفحة ' + escapeHtml(pb[1]) + "</div>");
-      continue;
-    }
-
-    flushList();
-    para.push(raw);
-  }
-
-  flushPara();
-  flushList();
-  flushCode();
-
-  return out.join("\n") || '<p class="muted">فارغ.</p>';
-}
-
-function inlineMd(s){
-  return String(s)
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
-    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function(m, text, url){
-      return '<a href="' + safeUrl(url) + '" target="_blank" rel="noopener noreferrer">' + text + "</a>";
-    });
-}
-
-function safeUrl(u){
-  u = String(u || "");
-  return /^(https?:|mailto:|#)/i.test(u) ? u : "#";
-}
-
-function renderEndpoints(){
-  var box = $("#endpointList");
-
-  if(!state.endpoints.length){
-    box.innerHTML = '<p class="muted">لا نقاط بعد. أضف رابط منصتك لتفعيل الإرسال/الجلب.</p>';
-    return;
-  }
-
-  box.innerHTML = state.endpoints.map(function(ep){
-    var st = ep._status || "";
-    return '<div class="endpoint ' + (ep.id === state.selectedEndpointId ? "active" : "") + '" data-ep="' + ep.id + '">' +
-      '<div class="row between">' +
-        '<b>' + escapeHtml(ep.name) + '</b>' +
-        '<span class="badge ' + escapeHtml(st) + '">' + escapeHtml(st || "idle") + '</span>' +
-      '</div>' +
-      '<div class="muted small ltr">' + escapeHtml(ep.url) + '</div>' +
-      '<div class="row" style="margin-top:7px">' +
-        '<button class="xs" data-action="selectEndpoint" data-id="' + ep.id + '">تحديد</button>' +
-        '<button class="xs" data-action="editEndpoint" data-id="' + ep.id + '">تعديل</button>' +
-        '<button class="xs danger" data-action="deleteEndpoint" data-id="' + ep.id + '">حذف</button>' +
-      '</div>' +
-    '</div>';
-  }).join("");
-}
-
-function renderSnippet(){
-  var ep = getSelectedEndpoint();
-  var lang = $("#snippetLang").value;
-  var url = ep && ep.url ? ep.url : "https://api.example.com/v1/documents";
-  var method = ep && ep.method ? ep.method : "POST";
-
-  var headers = Object.assign(
-    { "Content-Type": "application/json" },
-    ep ? parseHeaders(ep.headers) : {},
-    ep ? authHeaders(ep) : {}
-  );
-
-  var code = "";
-
-  if(lang === "curl"){
-    code = "curl -X " + method + " " + JSON.stringify(url);
-    Object.keys(headers).forEach(function(k){
-      code += " \\\n  -H " + JSON.stringify(k + ": " + headers[k]);
-    });
-    code += ' \\\n  --data-binary @payload.json\n\n';
-    code += '# payload.json: { "title": "...", "source": "...", "pages": 1, "markdown": "...", "extracted": {}, "outline": [] }';
-  } else if(lang === "js"){
-    code =
-      "const payload = {\n" +
-      "  title: 'وثيقة',\n" +
-      "  source: 'file.pdf',\n" +
-      "  pages: 1,\n" +
-      "  markdown: mdText,\n" +
-      "  extracted: {},\n" +
-      "  outline: []\n" +
-      "};\n\n" +
-      "const res = await fetch(" + JSON.stringify(url) + ", {\n" +
-      "  method: " + JSON.stringify(method) + ",\n" +
-      "  headers: " + JSON.stringify(headers, null, 2) + ",\n" +
-      "  body: JSON.stringify(payload)\n" +
-      "});\n\n" +
-      "const text = await res.text();\n" +
-      "console.log(res.status, text);";
-  } else {
-    code =
-      "import json, requests\n\n" +
-      "payload = {\n" +
-      "    'title': 'وثيقة',\n" +
-      "    'source': 'file.pdf',\n" +
-      "    'pages': 1,\n" +
-      "    'markdown': md_text,\n" +
-      "    'extracted': {},\n" +
-      "    'outline': []\n" +
-      "}\n" +
-      "headers = " + JSON.stringify(headers, null, 2) + "\n\n" +
-      "r = requests." + method.toLowerCase() + "(" + JSON.stringify(url) + ", json=payload, headers=headers)\n" +
-      "print(r.status_code, r.text)";
-  }
-
-  $("#snippet").textContent = code;
-}
-
-/* ---------- files/docs ---------- */
-
-function addDoc(doc, silent){
-  state.docs.unshift(doc);
-  state.currentId = doc.id;
-
-  renderDocs();
-  renderCurrent();
-
-  if(!silent) log("أُضيف مستند: " + doc.name, "ok");
-
-  var ep = getSelectedEndpoint();
-  if(ep && ep.autoPush && doc.type === "pdf"){
-    log("إرسال تلقائي إلى " + ep.name, "warn");
-    pushDoc(doc, ep);
-  }
-}
-
-function setCurrentDoc(id){
-  state.currentId = id;
-  renderDocs();
-  renderCurrent();
-}
-
-function deleteDoc(id){
-  state.docs = state.docs.filter(function(d){ return d.id !== id; });
-
-  if(state.currentId === id){
-    state.currentId = state.docs.length ? state.docs[0].id : null;
-  }
-
-  persistSavedDocs();
-  renderDocs();
-  renderCurrent();
-}
-
-async function handleFiles(fileList){
-  var files = Array.prototype.slice.call(fileList || []);
-  if(!files.length) return;
-
-  for(var i = 0; i < files.length; i++){
-    var file = files[i];
-
-    try {
-      if(/\.pdf$/i.test(file.name) || file.type === "application/pdf"){
-        log("بدء تحويل PDF: " + file.name, "info");
-        var doc = await convertPdf(file);
-        addDoc(doc);
-        toast("تم تحويل " + file.name, "ok");
-      } else if(/\.(md|markdown|txt)$/i.test(file.name) || /text\/(markdown|plain)/.test(file.type)){
-        var text = await file.text();
-        addDoc(makeDocFromMarkdown(file.name, text, "md", file.size, {}));
-        toast("تم فتح " + file.name, "ok");
-      } else {
-        toast("ملف غير مدعوم: " + file.name, "warn");
-      }
-    } catch(e){
-      log("فشل: " + file.name + " — " + e.message, "error");
-      toast("فشل: " + e.message, "error");
-    }
-  }
-}
-
-/* ---------- persistence saved docs ---------- */
-
-function persistSavedDocs(){
-  var saved = state.docs
-    .filter(function(d){ return d.saved; })
-    .slice(0, 10)
-    .map(function(d){
-      return {
-        id: d.id,
-        name: d.name,
-        markdown: d.markdown,
-        createdAt: d.createdAt,
-        saved: true
-      };
-    });
-
-  saveLS(STORAGE.savedDocs, saved);
-}
-
-function loadSavedDocs(){
-  var arr = loadLS(STORAGE.savedDocs, []);
-
-  return arr.map(function(d){
-    var doc = makeDocFromMarkdown(
-      d.name,
-      d.markdown,
-      "md",
-      new Blob([d.markdown]).size,
-      {}
-    );
-
-    doc.id = d.id || doc.id;
-    doc.createdAt = d.createdAt || doc.createdAt;
-    doc.saved = true;
-
-    return doc;
-  });
-}
-
-/* ---------- endpoints ---------- */
-
-function persistEndpoints(){
-  saveLS(STORAGE.endpoints, state.endpoints);
-}
-
-function parseHeaders(text){
-  var obj = {};
-
-  String(text || "").split("\n").forEach(function(line){
-    var idx = line.indexOf(":");
-    if(idx > 0){
-      var k = line.slice(0, idx).trim();
-      var v = line.slice(idx + 1).trim();
-      if(k) obj[k] = v;
-    }
-  });
-
-  return obj;
-}
-
-function authHeaders(ep){
-  var h = {};
-  var token = String(ep && ep.token || "").trim();
-
-  if(!token) return h;
-
-  if(ep.auth === "bearer"){
-    h.Authorization = "Bearer " + token;
-  } else if(ep.auth === "header"){
-    h["X-API-Key"] = token;
-  } else if(ep.auth === "basic"){
-    try {
-      h.Authorization = "Basic " + btoa(token.indexOf(":") >= 0 ? token : token + ":");
-    } catch(e){
-      h.Authorization = "Basic " + token;
-    }
-  }
-
-  return h;
-}
-
-function openEndpointForm(ep){
-  $("#endpointForm").hidden = false;
-
-  $("#epEditingId").value = ep && ep.id ? ep.id : "";
-  $("#epName").value = ep && ep.name ? ep.name : "";
-  $("#epUrl").value = ep && ep.url ? ep.url : "";
-  $("#epMethod").value = ep && ep.method ? ep.method : "POST";
-  $("#epMode").value = ep && ep.mode ? ep.mode : "json";
-  $("#epField").value = ep && ep.field ? ep.field : "markdown";
-  $("#epAuth").value = ep && ep.auth ? ep.auth : "none";
-  $("#epToken").value = ep && ep.token ? ep.token : "";
-  $("#epHeaders").value = ep && ep.headers ? ep.headers : "";
-  $("#epPullPath").value = ep && ep.pullPath ? ep.pullPath : "";
-  $("#epAuto").checked = !!(ep && ep.autoPush);
-}
-
-function closeEndpointForm(){
-  $("#endpointForm").hidden = true;
-  $("#epEditingId").value = "";
-}
-
-function saveEndpointFromForm(){
-  var id = $("#epEditingId").value;
-  var old = null;
-
-  for(var i = 0; i < state.endpoints.length; i++){
-    if(state.endpoints[i].id === id) old = state.endpoints[i];
-  }
-
-  var ep = {
-    id: id || uid("ep"),
-    name: $("#epName").value.trim() || "نقطة نهاية",
-    url: $("#epUrl").value.trim(),
-    method: $("#epMethod").value,
-    mode: $("#epMode").value,
-    field: $("#epField").value.trim() || "markdown",
-    auth: $("#epAuth").value,
-    token: $("#epToken").value,
-    headers: $("#epHeaders").value,
-    pullPath: $("#epPullPath").value.trim(),
-    autoPush: $("#epAuto").checked,
-    _status: old ? old._status : ""
-  };
-
-  if(!/^https?:\/\//i.test(ep.url)){
-    toast("الرابط يجب أن يبدأ بـ http أو https", "warn");
-    return;
-  }
-
-  if(id){
-    state.endpoints = state.endpoints.map(function(x){
-      return x.id === id ? ep : x;
-    });
-  } else {
-    state.endpoints.push(ep);
-    state.selectedEndpointId = ep.id;
-  }
-
-  persistEndpoints();
-  renderEndpoints();
-  renderSnippet();
-  closeEndpointForm();
-
-  toast("تم حفظ نقطة النهاية", "ok");
-}
-
-function selectEndpoint(id){
-  state.selectedEndpointId = id;
-  persistEndpoints();
-  renderEndpoints();
-  renderSnippet();
-}
-
-function deleteEndpoint(id){
-  state.endpoints = state.endpoints.filter(function(e){ return e.id !== id; });
-
-  if(state.selectedEndpointId === id){
-    state.selectedEndpointId = state.endpoints.length ? state.endpoints[0].id : null;
-  }
-
-  persistEndpoints();
-  renderEndpoints();
-  renderSnippet();
-}
-
-function buildPayload(doc, ep){
-  var field = ep && ep.field ? ep.field : "markdown";
-
-  var payload = {
-    title: doc.structure && doc.structure.meta ? doc.structure.meta.title : doc.name,
-    source: doc.name,
-    mimeType: "text/markdown",
-    convertedAt: doc.createdAt,
-    pages: doc.stats.pages,
-    words: doc.stats.words,
-    extracted: doc.extracted || {},
-    outline: doc.structure && doc.structure.outline ? doc.structure.outline : []
-  };
-
-  payload[field] = doc.markdown;
-
-  return payload;
-}
-
-function showApiResponse(title, body){
-  $("#apiResponse").textContent = title + "\n\n" + String(body || "").slice(0, 5000);
-}
-
-async function fetchWithTimeout(url, init, ms){
-  var controller = new AbortController();
-  var timer = setTimeout(function(){ controller.abort(); }, ms || 30000);
-
-  init = init || {};
-  init.signal = controller.signal;
-
-  try {
-    var res = await fetch(url, init);
-    clearTimeout(timer);
-    return res;
-  } catch(e){
-    clearTimeout(timer);
-    throw e;
-  }
-}
-
-async function pushDoc(doc, ep){
-  if(!doc){
-    toast("لا يوجد مستند للإرسال", "warn");
-    return;
-  }
-
-  if(!ep){
-    toast("أضف نقطة نهاية أولًا", "warn");
-    openEndpointForm(null);
-    return;
-  }
-
-  ep._status = "wait";
-  renderEndpoints();
-  showApiResponse("جارٍ الإرسال إلى " + ep.name + " ...", "");
-
-  try {
-    var payload = buildPayload(doc, ep);
-    var init;
-
-    if(ep.mode === "form"){
-      var fd = new FormData();
-      var baseName = String(doc.name || "document").replace(/\.[^.]+$/, "");
-
-      fd.append(
-        ep.field || "file",
-        new Blob([doc.markdown], { type: "text/markdown" }),
-        baseName + ".md"
-      );
-
-      fd.append("title", payload.title);
-      fd.append("source", payload.source);
-      fd.append("pages", String(payload.pages));
-      fd.append("words", String(payload.words));
-      fd.append("extracted", JSON.stringify(payload.extracted));
-      fd.append("outline", JSON.stringify(payload.outline));
-
-      init = {
-        method: ep.method || "POST",
-        body: fd,
-        headers: Object.assign({}, parseHeaders(ep.headers), authHeaders(ep))
-      };
-    } else {
-      init = {
-        method: ep.method || "POST",
-        headers: Object.assign(
-          { "Content-Type": "application/json" },
-          parseHeaders(ep.headers),
-          authHeaders(ep)
-        ),
-        body: JSON.stringify(payload)
-      };
-    }
-
-    var res = await fetchWithTimeout(ep.url, init, 30000);
-    var text = await res.text();
-
-    ep._status = res.ok ? "ok" : "bad";
-    persistEndpoints();
-    renderEndpoints();
-
-    showApiResponse("HTTP " + res.status + " · " + ep.name, text || "(بدون رد نصي)");
-
-    if(res.ok){
-      toast("تم الإرسال بنجاح", "ok");
-      log("نجح الإرسال إلى " + ep.name, "ok");
-    } else {
-      toast("الخادم رد بخطأ " + res.status, "error");
-      log("فشل الإرسال HTTP " + res.status, "error");
-    }
-
-    return { ok: res.ok, text: text };
-  } catch(e){
-    ep._status = "bad";
-    persistEndpoints();
-    renderEndpoints();
-
-    var msg = e.name === "AbortError" ? "انتهت مهلة الاتصال" : e.message;
-
-    showApiResponse(
-      "ERROR · " + ep.name,
-      msg + "\n\nإذا كان الخطأ CORS: فعّل Access-Control-Allow-Origin على الخادم، أو استخدم بروكسي/خادم وسيط."
-    );
-
-    toast("فشل الإرسال: " + msg, "error");
-    log("فشل الإرسال: " + msg, "error");
-  }
-}
-
-async function pingEndpoint(ep){
-  if(!ep){
-    toast("اختر نقطة نهاية", "warn");
-    return;
-  }
-
-  ep._status = "wait";
-  renderEndpoints();
-
-  try {
-    var init = {
-      method: ep.method === "GET" ? "GET" : "POST",
-      headers: Object.assign(
-        { "Content-Type": "application/json" },
-        parseHeaders(ep.headers),
-        authHeaders(ep)
-      )
-    };
-
-    if(ep.method !== "GET"){
-      init.body = JSON.stringify({ ping: true, at: new Date().toISOString() });
-    }
-
-    var t0 = performance.now();
-    var res = await fetchWithTimeout(ep.url, init, 15000);
-    var ms = Math.round(performance.now() - t0);
-    var text = await res.text();
-
-    ep._status = (res.ok || res.status < 500) ? "ok" : "bad";
-
-    persistEndpoints();
-    renderEndpoints();
-
-    showApiResponse("PING " + res.status + " · " + ms + "ms · " + ep.name, text.slice(0, 2000));
-
-    toast(res.ok ? "الاتصال يعمل" : "الخادم رد: " + res.status, res.ok ? "ok" : "warn");
-  } catch(e){
-    ep._status = "bad";
-    persistEndpoints();
-    renderEndpoints();
-
-    showApiResponse("PING FAILED · " + ep.name, e.message + "\n\nغالبًا CORS أو رابط غير صحيح.");
-    toast("تعذّر الاتصال: " + e.message, "error");
-  }
-}
-
-function getPath(obj, path){
-  return String(path || "").split(".").filter(Boolean).reduce(function(cur, key){
-    return cur == null ? undefined : cur[key];
-  }, obj);
-}
-
-async function pullFromUrl(){
-  var url = $("#pullUrl").value.trim();
-  var path = $("#pullPath").value.trim();
-  var ep = getSelectedEndpoint();
-
-  if(!url && ep && ep.url) url = ep.url;
-  if(!path && ep && ep.pullPath) path = ep.pullPath;
-
-  if(!/^https?:\/\//i.test(url)){
-    toast("أدخل رابطًا صحيحًا", "warn");
-    return;
-  }
-
-  showApiResponse("جارٍ الجلب ...", url);
-
-  try {
-    var res = await fetchWithTimeout(url, {
-      method: "GET",
-      headers: { Accept: "text/markdown,application/json,text/plain,*/*" }
-    }, 30000);
-
-    var text = await res.text();
-    var md = text;
-    var name = url.split("/").pop() || "remote.md";
-
-    try {
-      var j = JSON.parse(text);
-      var val = path
-        ? getPath(j, path)
-        : (j.markdown || j.content || (j.data && (j.data.markdown || (j.data.attributes && j.data.attributes.markdown))));
-
-      if(typeof val === "string"){
-        md = val;
-        name = (j.title || (j.data && j.data.id) || name) + ".md";
-      }
-    } catch(e){}
-
-    var doc = makeDocFromMarkdown(name, md, "md", new Blob([md]).size, {});
-    addDoc(doc);
-
-    showApiResponse("تم الجلب · HTTP " + res.status, md.slice(0, 2000));
-    toast("تم جلب الملف", "ok");
-  } catch(e){
-    showApiResponse("جلب فشل", e.message + "\n\nتحقق من CORS على الخادم.");
-    toast("فشل الجلب: " + e.message, "error");
-  }
-}
-
-/* ---------- actions ---------- */
-
-async function handleAction(action, id){
-  var doc = getCurrentDoc();
-  var ep = getSelectedEndpoint();
-
-  if(action === "pick"){
-    $("#fileInput").click();
-  }
-  else if(action === "demo"){
-    addDoc(makeDocFromMarkdown("demo.md", demoMarkdown(), "md", 0, {}));
-  }
-  else if(action === "clearDocs"){
-    state.docs = [];
-    state.currentId = null;
-    persistSavedDocs();
-    renderDocs();
-    renderCurrent();
-  }
-  else if(action === "openDoc"){
-    setCurrentDoc(id);
-  }
-  else if(action === "deleteDoc"){
-    deleteDoc(id);
-  }
-  else if(action === "copyMd"){
-    if(doc) copyText(doc.markdown);
-    else toast("لا مستند", "warn");
-  }
-  else if(action === "downloadMd"){
-    if(doc) downloadFile(safeFileName(doc.name) + ".md", doc.markdown, "text/markdown;charset=utf-8");
-    else toast("لا مستند", "warn");
-  }
-  else if(action === "downloadJson"){
-    if(doc){
-      downloadFile(
-        safeFileName(doc.name) + ".json",
-        JSON.stringify({
-          meta: doc.structure.meta,
-          outline: doc.structure.outline,
-          extracted: doc.extracted,
-          markdown: doc.markdown
-        }, null, 2),
-        "application/json;charset=utf-8"
-      );
-    } else {
-      toast("لا مستند", "warn");
-    }
-  }
-  else if(action === "saveDoc"){
-    if(!doc) return toast("لا مستند", "warn");
-    doc.saved = true;
-    persistSavedDocs();
-    renderDocs();
-    toast("حُفظ محليًا", "ok");
-  }
-  else if(action === "pushCurrent"){
-    await pushDoc(doc, ep);
-  }
-  else if(action === "newEndpoint"){
-    openEndpointForm(null);
-  }
-  else if(action === "editEndpoint"){
-    var e2 = state.endpoints.filter(function(x){ return x.id === id; })[0];
-    if(e2) openEndpointForm(e2);
-  }
-  else if(action === "deleteEndpoint"){
-    deleteEndpoint(id);
-  }
-  else if(action === "selectEndpoint"){
-    selectEndpoint(id);
-  }
-  else if(action === "saveEndpoint"){
-    saveEndpointFromForm();
-  }
-  else if(action === "cancelEndpoint"){
-    closeEndpointForm();
-  }
-  else if(action === "pingEndpoint"){
-    await pingEndpoint(ep);
-  }
-  else if(action === "pullUrl"){
-    await pullFromUrl();
-  }
-  else if(action === "copySnippet"){
-    copyText($("#snippet").textContent);
-  }
-}
-
-function demoMarkdown(){
-  return "# مستند تجريبي\n\n" +
-    "## الباب الأول\n" +
-    "- المادة 1: تسري الأحكام على الطلبات الإلكترونية.\n" +
-    "- المادة 2: الرسوم موضحة في البيانات المستخرجة.\n\n" +
-    "### بيانات تواصل\n" +
-    "- هاتف: +966 11 234 5678\n" +
-    "- بريد: services@example.gov.sa\n" +
-    "- رابط: https://example.gov.sa/api/docs/42.md\n\n" +
-    "> ملاحظة: هذا مستند تجريبي لاختبار الربط والاستخراج.\n";
-}
-
-function safeFileName(name){
-  return String(name || "document")
-    .replace(/[\\/:*?"<>|]/g, "_")
-    .replace(/\.(pdf|md|markdown|txt)$/i, "");
-}
-
-async function copyText(text){
-  try {
-    await navigator.clipboard.writeText(text);
-    toast("تم النسخ", "ok");
-  } catch(e){
-    var ta = document.createElement("textarea");
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-
-    try {
-      document.execCommand("copy");
-      toast("تم النسخ", "ok");
-    } catch(e2){
-      toast("تعذّر النسخ", "error");
-    }
-
-    ta.remove();
-  }
-}
-
-function downloadFile(filename, content, mime){
-  var blob = new Blob([content], { type: mime || "text/plain;charset=utf-8" });
-  var a = document.createElement("a");
-
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  setTimeout(function(){
-    URL.revokeObjectURL(a.href);
-  }, 1500);
-
-  log("تنزيل: " + filename, "ok");
-}
-
-/* ---------- events ---------- */
-
-function bindEvents(){
-  document.addEventListener("click", function(e){
-    var actionEl = e.target.closest("[data-action]");
-
-    if(actionEl){
-      e.preventDefault();
-      var action = actionEl.getAttribute("data-action");
-      var id = actionEl.getAttribute("data-id");
-
-      handleAction(action, id).catch(function(err){
-        log("خطأ في الزر " + action + ": " + err.message, "error");
-        toast("خطأ: " + err.message, "error");
-      });
-
-      return;
-    }
-
-    var tabEl = e.target.closest(".tab");
-    if(tabEl){
-      $$(".tab").forEach(function(t){
-        t.classList.toggle("active", t === tabEl);
-      });
-
-      $$(".pane").forEach(function(p){
-        p.classList.toggle("active", p.id === "pane-" + tabEl.getAttribute("data-tab"));
-      });
-
-      return;
-    }
-
-    var epEl = e.target.closest(".endpoint");
-    if(epEl){
-      selectEndpoint(epEl.getAttribute("data-ep"));
-      return;
-    }
-
-    var docEl = e.target.closest(".doc");
-    if(docEl){
-      setCurrentDoc(docEl.getAttribute("data-doc"));
-      return;
-    }
-  });
-
-  $("#fileInput").addEventListener("change", function(e){
-    handleFiles(e.target.files);
-    e.target.value = "";
-  });
-
-  $("#mdEditor").addEventListener("input", debounce(function(){
-    var d = getCurrentDoc();
-    if(!d) return;
-
-    d.markdown = $("#mdEditor").value;
-    d.stats = computeStats(d.markdown);
-    d.structure = buildStructure(d.markdown, d.name);
-    d.extracted = extractData(d.markdown);
-
-    refreshViews();
-  }, 250));
-
-  $("#snippetLang").addEventListener("change", renderSnippet);
-
-  var dragCounter = 0;
-  var dropCard = $("#dropCard");
-
-  window.addEventListener("dragenter", function(e){
-    e.preventDefault();
-    dragCounter++;
-    dropCard.classList.add("hot");
-  });
-
-  window.addEventListener("dragover", function(e){
-    e.preventDefault();
-    if(e.dataTransfer) e.dataTransfer.dropEffect = "copy";
-  });
-
-  window.addEventListener("dragleave", function(e){
-    dragCounter--;
-    if(dragCounter <= 0){
-      dragCounter = 0;
-      dropCard.classList.remove("hot");
-    }
-  });
-
-  window.addEventListener("drop", function(e){
-    e.preventDefault();
-    dragCounter = 0;
-    dropCard.classList.remove("hot");
-
-    if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){
-      handleFiles(e.dataTransfer.files);
-    }
-  });
-
-  window.addEventListener("paste", function(e){
-    if(e.clipboardData && e.clipboardData.files && e.clipboardData.files.length){
-      e.preventDefault();
-      handleFiles(e.clipboardData.files);
-    }
-  });
-
-  window.addEventListener("error", function(e){
-    log("JS Error: " + e.message, "error");
-  });
-
-  window.addEventListener("unhandledrejection", function(e){
-    var r = e.reason;
-    log("Promise Error: " + (r && r.message ? r.message : r), "error");
-  });
-}
-
-function init(){
-  state.endpoints = loadLS(STORAGE.endpoints, []);
-
-  var firstEp = state.endpoints[0];
-  state.selectedEndpointId = firstEp ? firstEp.id : null;
-
-  state.docs = loadSavedDocs();
-
-  var firstDoc = state.docs[0];
-  state.currentId = firstDoc ? firstDoc.id : null;
-
-  renderEndpoints();
-  renderDocs();
-  renderCurrent();
-  bindEvents();
-
-  log("المنصة جاهزة. جرّب الإفلات أو زر اختيار ملف.", "ok");
-
-  getPdfJs().catch(function(e){
-    log("تحذير: " + e.message, "warn");
-  });
-}
-
-if(document.readyState === "loading"){
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
-
-})();
-</script>
-
-</body>
-</html>
+    window.downloadFile = function(type) {
+        let content, filename, mime;
+        if(type === 'md') {
+            content = mdOutput.value;
+           
