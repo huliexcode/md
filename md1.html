@@ -1,1920 +1,2076 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>سَنَد — محوّل PDF إلى Markdown وواجهة ربط</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Zain:wght@200;300;400;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>سَنَد M2 — PDF إلى Markdown وربط API</title>
 <style>
-/* ============ TOKENS ============ */
 :root{
-  --base:#0D151D; --base2:#101C26; --panel:#15242F; --panel2:#1A2E3A; --panel3:#213A48;
-  --line:#26414F; --line2:#1E3542;
-  --tx:#E9F2F6; --tx2:#A5BDC9; --tx3:#6C8795;
-  --amber:#F5A623; --amber2:#FFC55C; --mint:#3FD9A4; --sky:#5FB3FF; --coral:#FF6E5B; --plum:#B58CFF;
-  --paper:#FAF8F2; --paperInk:#161C22; --paperLine:#DED8CA;
-  --sh-hard:4px 4px 0 rgba(0,0,0,.35);
-  --sh-soft:0 18px 44px -22px rgba(0,0,0,.75);
-  --ff-d:'Zain','IBM Plex Sans Arabic',system-ui,sans-serif;
-  --ff-b:'IBM Plex Sans Arabic',system-ui,-apple-system,sans-serif;
-  --ff-m:'IBM Plex Mono',ui-monospace,Menlo,monospace;
-  --r:4px;
+  --bg:#0b1220;
+  --panel:#111a2c;
+  --panel2:#17233b;
+  --line:#273756;
+  --text:#eaf0ff;
+  --muted:#9fb0d0;
+  --accent:#ffb020;
+  --green:#3ddc97;
+  --red:#ff6b6b;
+  --blue:#60a5fa;
 }
 *{box-sizing:border-box}
-html,body{margin:0;padding:0}
 body{
-  background:var(--base); color:var(--tx); font-family:var(--ff-b); font-weight:400;
-  font-size:15px; line-height:1.75; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  margin:0;
+  background:linear-gradient(180deg,#09101d,#0b1220 40%,#0d1526);
+  color:var(--text);
+  font-family:"Segoe UI",Tahoma,system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.7;
 }
-::selection{background:var(--amber);color:#10161c}
-h1,h2,h3,h4{font-family:var(--ff-d); font-weight:900; line-height:1.05; margin:0; letter-spacing:-.01em}
-a{color:var(--sky)}
-button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
-code,pre,.mono{font-family:var(--ff-m)}
-::-webkit-scrollbar{width:10px;height:10px}
-::-webkit-scrollbar-track{background:#0c141b}
-::-webkit-scrollbar-thumb{background:#26414f;border-radius:20px;border:2px solid #0c141b}
-::-webkit-scrollbar-thumb:hover{background:#365a6c}
-
-/* ============ AMBIENT BACKGROUND ============ */
-.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.bg-grid{position:absolute;inset:-2px;
-  background-image:linear-gradient(to right,rgba(95,179,255,.055) 1px,transparent 1px),
-                   linear-gradient(to bottom,rgba(95,179,255,.055) 1px,transparent 1px);
-  background-size:52px 52px; mask-image:radial-gradient(120% 90% at 50% 0%,#000 30%,transparent 88%)}
-.bg-scan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.014) 0 1px,transparent 1px 4px);mix-blend-mode:overlay}
-.bg-glow{position:absolute;width:900px;height:900px;border-radius:50%;left:var(--mx,50%);top:var(--my,20%);
-  transform:translate(-50%,-50%);transition:left .5s cubic-bezier(.2,.8,.2,1),top .5s cubic-bezier(.2,.8,.2,1);
-  background:radial-gradient(circle,rgba(245,166,35,.10),rgba(63,217,164,.05) 42%,transparent 68%)}
-.glyph{position:absolute;font-family:var(--ff-m);color:rgba(95,179,255,.13);white-space:nowrap;
-  animation:drift linear infinite; user-select:none}
-@keyframes drift{
-  0%{transform:translateY(20vh) rotate(0deg);opacity:0}
-  12%{opacity:1}
-  88%{opacity:1}
-  100%{transform:translateY(-120vh) rotate(12deg);opacity:0}
+header{
+  position:sticky;
+  top:0;
+  z-index:20;
+  background:rgba(11,18,32,.9);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
 }
-.wrap{position:relative;z-index:1}
-
-/* ============ TOP RAIL ============ */
-.rail{position:sticky;top:0;z-index:60;background:rgba(13,21,29,.86);backdrop-filter:blur(14px) saturate(1.4);
-  border-bottom:1px solid var(--line2)}
-.rail-in{max-width:1680px;margin:0 auto;padding:0 22px;height:58px;display:flex;align-items:center;gap:18px}
-.brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.brand-mark{width:30px;height:30px;display:grid;place-items:center;background:linear-gradient(150deg,var(--amber),#e07a12);
-  color:#141a1f;font-family:var(--ff-d);font-weight:900;font-size:17px;border-radius:3px;box-shadow:0 0 0 1px #ffcf80 inset, 2px 2px 0 rgba(0,0,0,.4)}
-.brand b{font-family:var(--ff-d);font-size:21px;font-weight:900;letter-spacing:.01em}
-.brand span{font-family:var(--ff-m);font-size:9.5px;color:var(--tx3);letter-spacing:.22em;display:block;margin-top:-4px}
-.leds{display:flex;gap:6px;margin-inline-start:8px}
-.led{display:flex;align-items:center;gap:6px;font-family:var(--ff-m);font-size:10px;letter-spacing:.06em;color:var(--tx2);
-  background:var(--panel);border:1px solid var(--line2);padding:4px 9px;border-radius:2px}
-.led i{width:6px;height:6px;border-radius:50%;background:var(--tx3);box-shadow:0 0 0 3px rgba(255,255,255,.03)}
-.led.on i{background:var(--mint);box-shadow:0 0 8px var(--mint)}
-.led.warn i{background:var(--amber);box-shadow:0 0 8px var(--amber)}
-.led.err i{background:var(--coral);box-shadow:0 0 8px var(--coral)}
-.led.pulse i{animation:pulse 1.1s ease-in-out infinite}
-@keyframes pulse{50%{opacity:.25;transform:scale(.7)}}
-.rail-sp{flex:1}
-.rail nav{display:flex;gap:2px}
-.rail nav a{font-size:12.5px;color:var(--tx2);text-decoration:none;padding:6px 10px;border-radius:3px;transition:.18s}
-.rail nav a:hover{color:var(--tx);background:var(--panel2)}
-
-/* ============ BUTTONS ============ */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);
-  background:var(--panel2);color:var(--tx);padding:9px 15px;border-radius:3px;font-size:13px;font-weight:500;
-  cursor:pointer;transition:transform .12s,background .18s,border-color .18s,box-shadow .18s;line-height:1.2}
-.btn:hover{background:var(--panel3);border-color:#3a5f74;transform:translateY(-1px)}
-.btn:active{transform:translateY(1px)}
-.btn.pri{background:linear-gradient(170deg,var(--amber2),var(--amber));color:#171017;border-color:#ffd18a;font-weight:700;
-  box-shadow:3px 3px 0 rgba(0,0,0,.4)}
-.btn.pri:hover{box-shadow:5px 5px 0 rgba(0,0,0,.45);transform:translateY(-2px)}
-.btn.mint{background:linear-gradient(170deg,#5ff0bd,var(--mint));color:#0d2119;border-color:#7cf3c8;font-weight:700}
-.btn.gh{background:transparent;border-color:var(--line)}
-.btn.sm{padding:6px 10px;font-size:11.5px}
-.btn.xs{padding:3px 8px;font-size:10.5px;border-radius:2px}
-.btn:disabled{opacity:.42;cursor:not-allowed;transform:none!important;box-shadow:none}
-.btn .k{font-family:var(--ff-m);font-size:9.5px;opacity:.6;border:1px solid currentColor;padding:0 3px;border-radius:2px}
-
-/* ============ BENCH / OPENING ============ */
-.bench{max-width:1680px;margin:0 auto;padding:46px 22px 30px;display:grid;gap:34px;
-  grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);align-items:end}
-.eyebrow{font-family:var(--ff-m);font-size:10.5px;letter-spacing:.28em;color:var(--amber);margin-bottom:18px;
-  display:flex;align-items:center;gap:10px}
-.eyebrow::after{content:'';height:1px;flex:1;background:linear-gradient(to left,var(--amber),transparent)}
-.bench h1{font-size:clamp(2.7rem,6.4vw,5.3rem);letter-spacing:-.025em}
-.bench h1 em{font-style:normal;color:var(--tx3);font-weight:300;display:block;font-size:.42em;letter-spacing:.01em;margin-top:14px;line-height:1.5;max-width:34ch;font-family:var(--ff-b)}
-.bench h1 u{text-decoration:none;position:relative;color:var(--amber)}
-.bench h1 u::after{content:'';position:absolute;inset-inline:0;bottom:.06em;height:.1em;background:rgba(245,166,35,.24);z-index:-1}
-.hero-stats{display:flex;gap:26px;margin-top:26px;flex-wrap:wrap}
-.hs{border-inline-start:2px solid var(--line);padding-inline-start:12px}
-.hs b{display:block;font-family:var(--ff-d);font-size:29px;font-weight:900;line-height:1;color:var(--tx)}
-.hs span{font-family:var(--ff-m);font-size:9.5px;letter-spacing:.14em;color:var(--tx3)}
-.hero-acts{display:flex;gap:10px;margin-top:26px;flex-wrap:wrap}
-
-/* drop slab */
-.slab-zone{position:relative;perspective:1200px}
-.slab{position:relative;background:var(--paper);color:var(--paperInk);border-radius:3px;
-  padding:34px 30px;min-height:290px;display:flex;flex-direction:column;justify-content:space-between;
-  box-shadow:var(--sh-soft);cursor:pointer;transition:transform .3s cubic-bezier(.2,.9,.2,1),box-shadow .3s;
-  transform-style:preserve-3d;overflow:hidden}
-.slab::before{content:'';position:absolute;inset:0;background:
-  repeating-linear-gradient(0deg,transparent 0 27px,rgba(22,28,34,.05) 27px 28px);pointer-events:none}
-.slab-stack,.slab-stack2{position:absolute;inset:0;background:#e6e2d6;border-radius:3px;z-index:-1}
-.slab-stack{transform:translate(10px,10px) rotate(1.4deg)}
-.slab-stack2{transform:translate(19px,19px) rotate(2.6deg);background:#d5d0c1}
-.slab-zone:hover .slab{transform:translateY(-6px) rotateX(2.5deg)}
-.slab.hot{transform:translateY(-10px) scale(1.012) rotateX(4deg);box-shadow:0 34px 60px -26px rgba(245,166,35,.5)}
-.slab-corner{position:absolute;top:0;inset-inline-end:0;width:0;height:0;
-  border-top:52px solid #e4dfd0;border-inline-start:52px solid transparent;transition:.3s}
-.slab:hover .slab-corner{border-top-width:70px;border-inline-start-width:70px}
-.slab-tag{position:relative;font-family:var(--ff-m);font-size:10px;letter-spacing:.2em;color:#8a8375}
-.slab-main{position:relative}
-.slab-main strong{display:block;font-family:var(--ff-d);font-size:clamp(1.7rem,3vw,2.5rem);font-weight:900;line-height:1.05;color:#11161b}
-.slab-main span{display:block;color:#5d6570;font-size:13.5px;margin-top:8px}
-.slab-foot{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;
-  border-top:1px dashed #c9c2b1;padding-top:14px;font-family:var(--ff-m);font-size:10.5px;color:#7c766a}
-.slab-chip{background:#161c22;color:var(--paper);padding:5px 10px;border-radius:2px}
-
-/* console */
-.console{margin-top:16px;background:#080e13;border:1px solid var(--line2);border-radius:3px;overflow:hidden}
-.console-h{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--line2);
-  font-family:var(--ff-m);font-size:10px;letter-spacing:.16em;color:var(--tx3);background:#0b131a}
-.console-h i{width:7px;height:7px;border-radius:50%;background:#243b48}
-.console-h i:nth-child(2){background:#3a2a17}
-.console-b{height:118px;overflow-y:auto;padding:9px 12px;font-family:var(--ff-m);font-size:11.5px;line-height:1.85;direction:ltr;text-align:left}
-.console-b div{opacity:0;animation:logIn .3s forwards}
-@keyframes logIn{to{opacity:1}}
-.lg-t{color:#456072}.lg-i{color:var(--sky)}.lg-ok{color:var(--mint)}.lg-w{color:var(--amber)}.lg-e{color:var(--coral)}
-.prog{height:2px;background:#122029;position:relative;overflow:hidden}
-.prog i{position:absolute;inset:0 100% 0 0;background:linear-gradient(90deg,var(--mint),var(--amber));transition:right .3s}
-
-/* ============ WORKSPACE ============ */
-.studio{max-width:1680px;margin:0 auto;padding:34px 22px 10px;
-  display:grid;gap:16px;grid-template-columns:296px minmax(0,1fr) 348px;align-items:start}
-.col{display:flex;flex-direction:column;gap:14px;min-width:0}
-.card{background:var(--panel);border:1px solid var(--line2);border-radius:4px;overflow:hidden;box-shadow:var(--sh-soft)}
-.card-h{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--line2);background:var(--panel2)}
-.card-h h3{font-size:15px;font-weight:800;letter-spacing:0}
-.card-h .num{font-family:var(--ff-m);font-size:9.5px;color:var(--tx3);letter-spacing:.14em;margin-inline-start:auto}
-.card-b{padding:13px}
-.ttl-mini{font-family:var(--ff-m);font-size:9.5px;letter-spacing:.2em;color:var(--tx3);margin:0 0 9px}
-
-/* queue */
-.q-item{display:flex;gap:10px;align-items:center;padding:9px;border:1px solid var(--line2);border-radius:3px;
-  background:var(--panel2);margin-bottom:8px;animation:qIn .3s cubic-bezier(.2,.9,.2,1)}
-@keyframes qIn{from{opacity:0;transform:translateY(-6px)}}
-.q-ico{width:30px;height:36px;flex-shrink:0;border-radius:2px;background:linear-gradient(160deg,#22384a,#152431);
-  border:1px solid var(--line);display:grid;place-items:center;font-family:var(--ff-m);font-size:8px;color:var(--sky);position:relative}
-.q-ico.md{background:linear-gradient(160deg,#1d3b32,#12241f);border-color:#2b5449;color:var(--mint)}
-.q-meta{min-width:0;flex:1}
-.q-meta b{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.q-meta span{font-family:var(--ff-m);font-size:9.5px;color:var(--tx3);display:block}
-.q-bar{height:3px;background:#0e1a22;border-radius:2px;margin-top:5px;overflow:hidden}
-.q-bar i{display:block;height:100%;width:0;background:var(--amber);transition:width .25s}
-.q-st{font-family:var(--ff-m);font-size:9px;letter-spacing:.1em;padding:2px 5px;border-radius:2px;background:#0e1a22;color:var(--tx3);border:1px solid var(--line2)}
-.q-st.done{color:var(--mint);border-color:#245043}
-.q-st.work{color:var(--amber);border-color:#4a3a19}
-.q-st.err{color:var(--coral);border-color:#5a2b25}
-.q-x{background:none;border:none;color:var(--tx3);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px;border-radius:2px}
-.q-x:hover{color:var(--coral);background:#22161a}
-.empty{font-size:12.5px;color:var(--tx3);text-align:center;padding:18px 8px;border:1px dashed var(--line);border-radius:3px;line-height:1.9}
-
-/* settings */
-.sw{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:12.5px;cursor:pointer;color:var(--tx2)}
-.sw:hover{color:var(--tx)}
-.sw i{width:32px;height:17px;border-radius:20px;background:#0f1c24;border:1px solid var(--line);position:relative;flex-shrink:0;transition:.2s}
-.sw i::after{content:'';position:absolute;top:1.5px;inset-inline-start:2px;width:12px;height:12px;border-radius:50%;background:var(--tx3);transition:.2s}
-.sw.on i{background:rgba(245,166,35,.2);border-color:var(--amber)}
-.sw.on i::after{inset-inline-start:16px;background:var(--amber);box-shadow:0 0 7px var(--amber)}
-.sw span{flex:1}
-.sw small{font-family:var(--ff-m);font-size:9px;color:var(--tx3)}
-select,input[type=text],input[type=url],input[type=password],input[type=number],textarea{
-  width:100%;background:#0e1922;border:1px solid var(--line);border-radius:3px;padding:8px 10px;font-size:12.5px;
-  transition:.18s;color:var(--tx)}
-textarea{font-family:var(--ff-m);font-size:12px;line-height:1.7;resize:vertical;direction:ltr;text-align:left}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(245,166,35,.12);background:#122029}
-label.f{display:block;font-family:var(--ff-m);font-size:9.5px;letter-spacing:.13em;color:var(--tx3);margin:10px 0 5px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-
-/* output tabs */
-.tabs{display:flex;gap:2px;padding:0 8px;background:var(--panel2);border-bottom:1px solid var(--line2);position:relative;overflow-x:auto}
-.tab{background:none;border:none;color:var(--tx3);padding:12px 13px;font-size:12.5px;font-weight:500;cursor:pointer;
-  position:relative;white-space:nowrap;transition:.18s;font-family:var(--ff-b)}
-.tab:hover{color:var(--tx2)}
-.tab.on{color:var(--tx)}
-.tab .badge{font-family:var(--ff-m);font-size:9px;background:var(--panel3);padding:1px 5px;border-radius:8px;margin-inline-start:5px;color:var(--tx2)}
-.tab-ind{position:absolute;bottom:0;height:2px;background:var(--amber);transition:.3s cubic-bezier(.2,.9,.2,1);box-shadow:0 0 10px var(--amber)}
-.out-body{min-height:440px;max-height:640px;overflow:auto;position:relative}
+.header-in{
+  max-width:1500px;
+  margin:auto;
+  padding:12px 18px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.logo{
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),#ff7a18);
+  display:grid;
+  place-items:center;
+  font-weight:900;
+  color:#1b1206;
+}
+h1{font-size:20px;margin:0}
+h2,h3{margin:0 0 10px}
+.muted{color:var(--muted)}
+.ltr{direction:ltr;text-align:left}
+.wrap{max-width:1500px;margin:auto;padding:18px}
+.card{
+  background:rgba(17,26,44,.88);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.2);
+}
+.drop{
+  border:2px dashed var(--line);
+  text-align:center;
+  margin-bottom:16px;
+  transition:.2s;
+}
+.drop.hot{
+  border-color:var(--accent);
+  background:rgba(255,176,32,.08);
+  transform:translateY(-2px);
+}
+.grid{
+  display:grid;
+  grid-template-columns:300px minmax(0,1fr) 360px;
+  gap:16px;
+  align-items:start;
+}
+@media(max-width:1200px){
+  .grid{grid-template-columns:1fr}
+}
+.row{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.row.between{justify-content:space-between}
+.row2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+button{
+  border:1px solid var(--line);
+  background:var(--panel2);
+  color:var(--text);
+  border-radius:10px;
+  padding:9px 12px;
+  cursor:pointer;
+  transition:.15s;
+  font:inherit;
+}
+button:hover{
+  border-color:#3d5682;
+  transform:translateY(-1px);
+}
+button.primary{
+  background:linear-gradient(135deg,var(--accent),#ff8a00);
+  color:#201404;
+  border-color:#ffd07a;
+  font-weight:700;
+}
+button.danger{
+  color:#ffd0d0;
+  border-color:#5b2730;
+}
+button.xs{
+  padding:5px 8px;
+  font-size:12px;
+  border-radius:8px;
+}
+input,select,textarea{
+  width:100%;
+  background:#0c1424;
+  border:1px solid var(--line);
+  color:var(--text);
+  border-radius:10px;
+  padding:9px 10px;
+  font:inherit;
+}
+input:focus,select:focus,textarea:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(255,176,32,.12);
+}
+label{
+  display:block;
+  margin:8px 0;
+  font-size:13px;
+  color:var(--muted);
+}
+.check{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--text);
+}
+.check input{width:auto}
+.tabs{
+  display:flex;
+  gap:6px;
+  margin:10px 0;
+  flex-wrap:wrap;
+}
+.tab{
+  padding:8px 12px;
+  border-radius:999px;
+  background:#0e1729;
+  border:1px solid var(--line);
+}
+.tab.active{
+  background:rgba(255,176,32,.14);
+  border-color:var(--accent);
+  color:#fff;
+}
 .pane{display:none}
-.pane.on{display:block;animation:fade .25s}
-@keyframes fade{from{opacity:0;transform:translateY(4px)}}
-#mdRaw{width:100%;min-height:440px;border:none;border-radius:0;background:#0b131a;padding:18px 20px;
-  font-family:var(--ff-m);font-size:12.6px;line-height:1.95;resize:none;direction:ltr;text-align:left;color:#d5e6ef}
-#mdRaw:focus{box-shadow:none;background:#0b131a}
-.preview{background:var(--paper);color:var(--paperInk);padding:34px clamp(20px,5vw,54px);font-size:15px;line-height:1.95}
-.preview h1,.preview h2,.preview h3,.preview h4{font-family:var(--ff-d);color:#101519;margin:1.5em 0 .5em;line-height:1.15}
-.preview h1{font-size:2.3em;font-weight:900;border-bottom:3px solid #161c22;padding-bottom:.18em}
-.preview h2{font-size:1.65em;font-weight:800}
-.preview h3{font-size:1.28em;font-weight:700;color:#3a2d10}
-.preview h4{font-size:1.06em;font-weight:700;color:#4a5560;letter-spacing:.02em}
-.preview p{margin:.85em 0}
-.preview ul,.preview ol{padding-inline-start:1.5em;margin:.7em 0}
-.preview li{margin:.28em 0}
-.preview li::marker{color:var(--amber)}
-.preview blockquote{margin:1em 0;padding:.5em 1em;border-inline-start:3px solid var(--mint);background:#f1efe6;color:#3d4550}
-.preview code{background:#ece8dc;padding:.1em .35em;border-radius:2px;font-size:.86em;direction:ltr;display:inline-block}
-.preview pre{background:#161c22;color:#dbe8ef;padding:14px 16px;border-radius:3px;overflow-x:auto;direction:ltr;text-align:left}
-.preview pre code{background:none;color:inherit;padding:0}
-.preview table{border-collapse:collapse;width:100%;margin:1.1em 0;font-size:13.5px}
-.preview th{background:#161c22;color:var(--paper);text-align:start;padding:8px 11px;font-weight:600}
-.preview td{padding:7px 11px;border-bottom:1px solid var(--paperLine)}
-.preview tr:nth-child(even) td{background:#f3f1ea}
-.preview hr{border:none;border-top:1px dashed #bdb6a6;margin:1.8em 0}
-.preview a{color:#0b5fa5;text-decoration:underline;text-underline-offset:2px}
-.preview img{max-width:100%}
-.preview .pbreak{display:block;text-align:center;font-family:var(--ff-m);font-size:9.5px;letter-spacing:.2em;color:#948d7f;
-  border-top:1px solid var(--paperLine);padding-top:8px;margin:1.4em 0}
-.json-view{padding:16px 18px;background:#0b131a;direction:ltr;text-align:left;font-family:var(--ff-m);font-size:12px;line-height:1.72;min-height:440px;white-space:pre-wrap;margin:0;color:#c8dde8}
-.j-key{color:var(--sky)}.j-str{color:var(--mint)}.j-num{color:var(--amber2)}.j-bool{color:var(--plum)}.j-null{color:var(--tx3)}
-.toolbar{display:flex;align-items:center;gap:7px;padding:9px 11px;border-top:1px solid var(--line2);background:var(--panel2);flex-wrap:wrap}
-.stat-strip{display:flex;gap:0;border:1px solid var(--line2);border-radius:3px;overflow:hidden;background:#0e1922;margin-bottom:12px;flex-wrap:wrap}
-.stat-strip div{padding:8px 12px;border-inline-end:1px solid var(--line2);flex:1;min-width:74px}
-.stat-strip div:last-child{border:none}
-.stat-strip b{display:block;font-family:var(--ff-d);font-size:19px;font-weight:900;line-height:1.1}
-.stat-strip span{font-family:var(--ff-m);font-size:8.5px;letter-spacing:.12em;color:var(--tx3)}
-.warnbox{border:1px solid #4a3a19;background:rgba(245,166,35,.07);border-radius:3px;padding:9px 11px;font-size:12px;color:#e6c482;margin-top:10px}
-.warnbox b{font-family:var(--ff-m);font-size:10px;letter-spacing:.14em;color:var(--amber);display:block;margin-bottom:5px}
-
-/* link panel */
-.ep{border:1px solid var(--line2);border-radius:3px;background:var(--panel2);padding:9px 10px;margin-bottom:8px;cursor:pointer;transition:.18s}
-.ep:hover{border-color:#3a5f74;transform:translateX(-2px)}
-.ep.sel{border-color:var(--mint);background:rgba(63,217,164,.07)}
-.ep-top{display:flex;align-items:center;gap:7px}
-.ep-top b{font-size:13px;font-weight:600}
-.ep-dot{width:7px;height:7px;border-radius:50%;background:var(--tx3);flex-shrink:0}
-.ep-dot.ok{background:var(--mint);box-shadow:0 0 8px var(--mint)}
-.ep-dot.bad{background:var(--coral);box-shadow:0 0 8px var(--coral)}
-.ep-dot.wait{background:var(--amber);animation:pulse 1s infinite}
-.ep-url{font-family:var(--ff-m);font-size:9.5px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;margin-top:3px}
-.ep-tags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
-.tagx{font-family:var(--ff-m);font-size:8.5px;letter-spacing:.08em;padding:1px 5px;border:1px solid var(--line);border-radius:2px;color:var(--tx2)}
-.tagx.auto{color:var(--amber);border-color:#4a3a19}
-.subtabs{display:flex;gap:2px;background:#0e1922;padding:3px;border-radius:3px;border:1px solid var(--line2);margin-bottom:12px}
-.subtabs button{flex:1;background:none;border:none;color:var(--tx3);padding:6px 4px;font-size:11.5px;border-radius:2px;cursor:pointer;transition:.18s}
-.subtabs button.on{background:var(--panel3);color:var(--tx)}
-.subpane{display:none}.subpane.on{display:block;animation:fade .22s}
-.kv{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px dotted var(--line2)}
-.kv span{color:var(--tx3);font-family:var(--ff-m);font-size:10.5px}
-.hrow{display:flex;gap:6px;margin-bottom:6px}
-.resp{background:#080e13;border:1px solid var(--line2);border-radius:3px;padding:9px 11px;font-family:var(--ff-m);
-  font-size:11px;direction:ltr;text-align:left;max-height:150px;overflow:auto;white-space:pre-wrap;color:var(--tx2);margin-top:10px}
-.resp .ok{color:var(--mint)}.resp .bad{color:var(--coral)}
-
-/* extraction rules */
-.rule{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid var(--line2);border-radius:3px;background:var(--panel2);margin-bottom:6px;font-size:12px}
-.rule b{flex:1;font-weight:500;font-size:12px}
-.rule code{font-size:9.5px;color:var(--sky);direction:ltr;background:#0e1922;padding:1px 4px;border-radius:2px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rule .n{font-family:var(--ff-m);font-size:10px;color:var(--amber);background:#241c0e;border-radius:2px;padding:1px 5px}
-.tbl-x{width:100%;border-collapse:collapse;font-size:12px}
-.tbl-x th{background:var(--panel3);padding:6px 9px;text-align:start;font-family:var(--ff-m);font-size:9.5px;letter-spacing:.12em;color:var(--tx2);font-weight:400}
-.tbl-x td{padding:6px 9px;border-bottom:1px solid var(--line2);vertical-align:top}
-.tbl-x tr:hover td{background:rgba(95,179,255,.04)}
-
-/* ============ PIPELINE ============ */
-.band{max-width:1680px;margin:0 auto;padding:70px 22px}
-.band-h{display:flex;align-items:flex-end;gap:20px;margin-bottom:34px;flex-wrap:wrap}
-.band-h h2{font-size:clamp(1.9rem,3.6vw,3.1rem)}
-.band-h p{color:var(--tx3);font-size:13.5px;max-width:46ch;margin:0}
-.pipe{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;position:relative;border:1px solid var(--line2);border-radius:4px;overflow:hidden;background:var(--panel)}
-.step{padding:22px 18px 26px;border-inline-end:1px solid var(--line2);position:relative;transition:.25s;background:linear-gradient(180deg,transparent,rgba(95,179,255,.03))}
-.step:last-child{border:none}
-.step:hover{background:linear-gradient(180deg,rgba(245,166,35,.09),rgba(63,217,164,.05))}
-.step:hover .st-n{color:var(--amber);transform:translateY(-2px)}
-.st-n{font-family:var(--ff-d);font-size:44px;font-weight:900;line-height:.8;color:#22394a;transition:.25s}
-.step h4{font-size:16.5px;margin:12px 0 6px;font-weight:800}
-.step p{font-size:12.5px;color:var(--tx3);margin:0;line-height:1.8}
-.step::after{content:'';position:absolute;bottom:0;inset-inline:0;height:2px;background:var(--amber);
-  transform:scaleX(0);transform-origin:right;transition:transform .35s}
-.step:hover::after{transform:scaleX(1)}
-.flow{height:26px;position:relative;overflow:hidden;border-block:1px solid var(--line2);background:#0b131a}
-.flow i{position:absolute;top:50%;width:70px;height:1px;background:linear-gradient(90deg,transparent,var(--mint),transparent);
-  animation:flow 3.4s linear infinite}
-@keyframes flow{from{transform:translateX(110vw)}to{transform:translateX(-140px)}}
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--line2);border:1px solid var(--line2);border-radius:4px;overflow:hidden}
-.metric{background:var(--panel);padding:24px 20px;transition:.25s}
-.metric:hover{background:var(--panel2)}
-.metric b{display:block;font-family:var(--ff-d);font-size:clamp(2.1rem,4vw,3.2rem);font-weight:900;line-height:1;color:var(--tx)}
-.metric b em{font-style:normal;font-size:.38em;color:var(--amber);margin-inline-start:4px}
-.metric span{font-family:var(--ff-m);font-size:9.5px;letter-spacing:.16em;color:var(--tx3);display:block;margin-top:8px}
-.reveal{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1)}
-.reveal.in{opacity:1;transform:none}
-
-/* library */
-.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
-.lib-card{border:1px solid var(--line2);border-radius:4px;background:var(--panel);padding:15px;transition:.22s;position:relative;overflow:hidden}
-.lib-card:hover{transform:translateY(-3px);border-color:#3a5f74;box-shadow:var(--sh-soft)}
-.lib-card::before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:3px;background:var(--mint);opacity:.5}
-.lib-card b{display:block;font-size:14px;font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lib-card p{font-family:var(--ff-m);font-size:9.5px;color:var(--tx3);margin:0 0 10px;direction:ltr;text-align:left}
-.lib-acts{display:flex;gap:5px;flex-wrap:wrap}
-
-/* modal */
-.modal{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:20px;
-  background:rgba(6,10,14,.78);backdrop-filter:blur(6px)}
-.modal.on{display:flex;animation:fade .2s}
-.modal-in{background:var(--panel);border:1px solid var(--line);border-radius:5px;width:min(660px,100%);max-height:88vh;
-  overflow:auto;box-shadow:0 40px 90px -30px #000;animation:mUp .3s cubic-bezier(.2,.9,.2,1)}
-@keyframes mUp{from{transform:translateY(20px) scale(.98);opacity:0}}
-.modal-h{display:flex;align-items:center;padding:15px 18px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--panel2);z-index:2}
-.modal-h h3{font-size:19px}
-.modal-h button{margin-inline-start:auto;background:none;border:none;color:var(--tx3);font-size:22px;cursor:pointer;line-height:1}
-.modal-h button:hover{color:var(--coral)}
-.modal-b{padding:18px}
-.modal-f{padding:14px 18px;border-top:1px solid var(--line2);display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:var(--panel2)}
-
-/* toasts */
-.toasts{position:fixed;bottom:20px;inset-inline-start:20px;z-index:300;display:flex;flex-direction:column;gap:8px}
-.toast{background:var(--panel2);border:1px solid var(--line);border-inline-start:3px solid var(--mint);border-radius:3px;
-  padding:11px 15px;font-size:13px;box-shadow:var(--sh-soft);animation:tIn .3s cubic-bezier(.2,.9,.2,1);max-width:370px}
-.toast.w{border-inline-start-color:var(--amber)}.toast.e{border-inline-start-color:var(--coral)}.toast.i{border-inline-start-color:var(--sky)}
-.toast b{display:block;font-family:var(--ff-m);font-size:9.5px;letter-spacing:.14em;color:var(--tx3);margin-bottom:2px}
-@keyframes tIn{from{transform:translateX(-20px);opacity:0}}
-
-footer{border-top:1px solid var(--line2);margin-top:40px;padding:30px 22px;background:#0a1118}
-.foot-in{max-width:1680px;margin:0 auto;display:flex;gap:20px;justify-content:space-between;flex-wrap:wrap;align-items:center;
-  font-family:var(--ff-m);font-size:10.5px;color:var(--tx3);letter-spacing:.06em}
-
-@media(max-width:1240px){
-  .studio{grid-template-columns:1fr;}
-  .bench{grid-template-columns:1fr;padding-top:34px}
-  .pipe{grid-template-columns:1fr 1fr}
-  .step{border-bottom:1px solid var(--line2)}
+.pane.active{display:block}
+#mdEditor{
+  min-height:420px;
+  font-family:Consolas,Menlo,monospace;
+  font-size:13px;
+  line-height:1.8;
+  direction:ltr;
+  text-align:left;
+  white-space:pre-wrap;
 }
-@media(max-width:700px){
-  .pipe{grid-template-columns:1fr}.rail nav{display:none}.leds .led:not(:first-child){display:none}
+.preview{
+  min-height:420px;
+  background:#fafafa;
+  color:#172033;
+  border-radius:10px;
+  padding:18px;
+  overflow:auto;
 }
+.preview h1,.preview h2,.preview h3{
+  line-height:1.25;
+  margin:1em 0 .45em;
+}
+.preview h1{
+  border-bottom:2px solid #d8dee9;
+  padding-bottom:.2em;
+}
+.preview blockquote{
+  margin:.8em 0;
+  padding:.4em .9em;
+  border-right:4px solid var(--green);
+  background:#eef7f3;
+  color:#244;
+}
+.preview code{
+  background:#eceff4;
+  padding:.1em .35em;
+  border-radius:5px;
+  font-family:Consolas,monospace;
+  direction:ltr;
+  display:inline-block;
+}
+.preview pre{
+  background:#111a2c;
+  color:#eaf0ff;
+  padding:12px;
+  border-radius:10px;
+  overflow:auto;
+  direction:ltr;
+  text-align:left;
+}
+.preview pre code{
+  background:transparent;
+  color:inherit;
+  padding:0;
+}
+.preview ul,.preview ol{
+  padding-right:1.5em;
+}
+.preview hr{
+  border:none;
+  border-top:1px dashed #c8d0dc;
+  margin:1.2em 0;
+}
+.preview .pagebreak{
+  text-align:center;
+  color:#7b8798;
+  font-size:12px;
+  border-top:1px dashed #d7dde8;
+  margin:1.2em 0;
+  padding-top:8px;
+}
+pre{
+  white-space:pre-wrap;
+  word-break:break-word;
+  background:#09111f;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:12px;
+  max-height:420px;
+  overflow:auto;
+  direction:ltr;
+  text-align:left;
+  font-size:12px;
+}
+.doc,.endpoint{
+  border:1px solid var(--line);
+  background:#0e1729;
+  border-radius:12px;
+  padding:10px;
+  margin-bottom:8px;
+  cursor:pointer;
+  transition:.15s;
+}
+.doc:hover,.endpoint:hover{
+  border-color:#42608f;
+  transform:translateY(-1px);
+}
+.doc.active,.endpoint.active{
+  border-color:var(--accent);
+  background:rgba(255,176,32,.08);
+}
+.badge{
+  font-size:11px;
+  padding:2px 7px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  color:var(--muted);
+}
+.badge.ok{
+  color:#b7ffe0;
+  border-color:#2b6d51;
+  background:rgba(61,220,151,.1);
+}
+.badge.bad{
+  color:#ffd0d0;
+  border-color:#7b3038;
+  background:rgba(255,107,107,.1);
+}
+.badge.wait{
+  color:#ffe3ae;
+  border-color:#7a5a1f;
+  background:rgba(255,176,32,.1);
+}
+.log{
+  height:140px;
+  overflow:auto;
+  background:#08101d;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:8px;
+  font-family:Consolas,monospace;
+  font-size:11px;
+  direction:ltr;
+  text-align:left;
+}
+.log div{margin:2px 0}
+.log .info{color:#9bf}
+.log .ok{color:#7ef0c0}
+.log .warn{color:#ffd07a}
+.log .error{color:#ff9b9b}
+.response{max-height:220px}
+#toasts{
+  position:fixed;
+  right:16px;
+  bottom:16px;
+  z-index:100;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.toast{
+  background:#17233b;
+  border:1px solid var(--line);
+  border-right:4px solid var(--blue);
+  padding:10px 14px;
+  border-radius:10px;
+  box-shadow:0 12px 30px rgba(0,0,0,.35);
+  animation:in .25s ease;
+  max-width:360px;
+}
+.toast.ok{border-right-color:var(--green)}
+.toast.error{border-right-color:var(--red)}
+.toast.warn{border-right-color:var(--accent)}
+@keyframes in{
+  from{opacity:0;transform:translateY(10px)}
+}
+.small{font-size:12px}
 </style>
 </head>
 <body>
 
-<div class="bg" aria-hidden="true">
-  <div class="bg-grid"></div>
-  <div class="bg-glow" id="glow"></div>
-  <div class="bg-scan"></div>
-  <div id="glyphs"></div>
-</div>
-
-<div class="wrap">
-
-<!-- ================= RAIL ================= -->
-<header class="rail">
-  <div class="rail-in">
-    <div class="brand">
-      <div class="brand-mark">س</div>
-      <div><b>سَنَد</b><span>PDF → MARKDOWN</span></div>
+<header>
+  <div class="header-in">
+    <div class="logo">س</div>
+    <div>
+      <h1>سَنَد M2</h1>
+      <div class="muted small">PDF → Markdown + ربط JSON/API</div>
     </div>
-    <div class="leds">
-      <div class="led" id="ledEngine"><i></i>ENGINE</div>
-      <div class="led" id="ledFiles"><i></i>0 FILES</div>
-      <div class="led" id="ledLink"><i></i>NO LINK</div>
+    <div style="flex:1"></div>
+    <div class="row">
+      <button data-action="pick">📄 اختيار ملف</button>
+      <button data-action="demo">🧪 تجربة</button>
     </div>
-    <div class="rail-sp"></div>
-    <nav>
-      <a href="#studio">الاستوديو</a>
-      <a href="#how">المحرك</a>
-      <a href="#library">المكتبة</a>
-      <a href="#contract">عقد الربط</a>
-    </nav>
-    <button class="btn sm" id="btnPickTop">⤓ اختر ملف <span class="k">⌘O</span></button>
   </div>
 </header>
 
-<!-- ================= BENCH ================= -->
-<section class="bench">
-  <div>
-    <div class="eyebrow">SANAD ENGINE · pdf.js · 100% CLIENT-SIDE</div>
-    <h1>
-      من ملفٍ <u>مغلق</u><br>إلى بنيةٍ <u>مفتوحة</u>
-      <em>استخراج الصفحات إلى Markdown منظّم + JSON مهيكَل، ثم دفعه أو جلبه عبر رابط منصتك القائمة بلا سطر خادم واحد.</em>
-    </h1>
-    <div class="hero-stats">
-      <div class="hs"><b id="hsPages">0</b><span>PAGES PARSED</span></div>
-      <div class="hs"><b id="hsBlocks">0</b><span>BLOCKS BUILT</span></div>
-      <div class="hs"><b id="hsTime">0<em style="font-size:.5em">ms</em></b><span>LAST RUN</span></div>
-      <div class="hs"><b id="hsDocs">0</b><span>IN LIBRARY</span></div>
+<main class="wrap">
+  <section class="card drop" id="dropCard">
+    <input id="fileInput" type="file" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain" multiple hidden />
+    <h2>أفلت ملفات PDF أو MD هنا</h2>
+    <p class="muted">
+      التحويل يحدث داخل متصفحك. الإرسال إلى منصتك لا يتم إلا عند الضغط على زر الإرسال أو تفعيل الإرسال التلقائي.
+    </p>
+    <div class="row between" style="justify-content:center">
+      <button class="primary" data-action="pick">فتح ملفات</button>
+      <button data-action="clearDocs">مسح القائمة</button>
     </div>
-    <div class="hero-acts">
-      <button class="btn pri" id="btnPick">⤒ تحميل PDF وتحويله</button>
-      <button class="btn gh" id="btnDemo">تجربة على مستند نموذجي</button>
-      <button class="btn gh" id="btnPasteInfo">⌘V للصق ملف</button>
-    </div>
-  </div>
+  </section>
 
-  <div class="slab-zone">
-    <div class="slab-stack2"></div><div class="slab-stack"></div>
-    <div class="slab" id="drop">
-      <div class="slab-corner"></div>
-      <div class="slab-tag">DROP TARGET · application/pdf · text/markdown</div>
-      <div class="slab-main">
-        <strong>أفلت الملف هنا</strong>
-        <span>يُقرأ الملف محليًا في متصفحك ولا يغادر الجهاز إلا عند ضغط «إرسال إلى المنصة». يقبل PDF / MD / TXT.</span>
+  <div class="grid">
+    <aside class="card">
+      <h3>الملفات</h3>
+      <div id="docsList"><p class="muted">لا ملفات بعد.</p></div>
+
+      <h3 style="margin-top:14px">سجل التشغيل</h3>
+      <div id="logBox" class="log"></div>
+    </aside>
+
+    <section class="card">
+      <div class="row between">
+        <h3 id="currentTitle">لا مستند محدد</h3>
+        <span id="currentMeta" class="muted small"></span>
       </div>
-      <div class="slab-foot">
-        <span id="slabHint">الحد الآمن ~ 200 صفحة · لا رفع بدون إذنك</span>
-        <span class="slab-chip" id="slabChip">IDLE</span>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="md">Markdown</button>
+        <button class="tab" data-tab="preview">معاينة</button>
+        <button class="tab" data-tab="json">بنية JSON</button>
+        <button class="tab" data-tab="extract">بيانات مستخرجة</button>
       </div>
-    </div>
 
-    <div class="console">
-      <div class="console-h"><i></i><i></i><i></i><span style="margin-inline-start:6px">EXTRACTION LOG</span>
-        <span style="margin-inline-start:auto" id="logCount">0 lines</span></div>
-      <div class="prog"><i id="progBar"></i></div>
-      <div class="console-b" id="log"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= STUDIO ================= -->
-<main class="studio" id="studio">
-
-  <!-- column: files + settings -->
-  <div class="col">
-    <div class="card">
-      <div class="card-h"><h3>طابور الملفات</h3><span class="num" id="qCount">0/0</span></div>
-      <div class="card-b" id="queue">
-        <div class="empty">لا ملفات بعد.<br>اسحب PDF أو MD إلى اللوحة أعلاه.</div>
+      <div class="pane active" id="pane-md">
+        <textarea id="mdEditor" spellcheck="false" placeholder="# العنوان&#10;&#10;ابدأ التحويل أو الصق Markdown هنا..."></textarea>
       </div>
-    </div>
 
-    <div class="card">
-      <div class="card-h"><h3>إعدادات الاستخراج</h3><span class="num">CFG</span></div>
-      <div class="card-b">
-        <div class="ttl-mini">البنية</div>
-        <div class="sw on" data-cfg="columns"><i></i><span>كشف الأعمدة المتعددة</span><small>AUTO</small></div>
-        <div class="sw on" data-cfg="headings"><i></i><span>تحويل الأحجام إلى عناوين</span><small>H1-H6</small></div>
-        <div class="sw on" data-cfg="lists"><i></i><span>قوائم نقطية/رقمية</span><small>UL/OL</small></div>
-        <div class="sw on" data-cfg="tables"><i></i><span>استخراج الجداول</span><small>PIPE</small></div>
-        <div class="sw on" data-cfg="furniture"><i></i><span>حذف الترويسة والتذييل المكرر</span><small>STRIP</small></div>
-        <div class="sw on" data-cfg="code"><i></i><span>الخطوط أحادية المسافة → بلوك كود</span><small>```</small></div>
-        <div class="sw" data-cfg="links"><i></i><span>ربط التعليقات التشعبية</span><small>ANN</small></div>
-        <div class="ttl-mini" style="margin-top:14px">الإخراج</div>
-        <div class="sw" data-cfg="frontmatter"><i></i><span>YAML Front Matter</span><small>META</small></div>
-        <div class="sw on" data-cfg="pageMarks"><i></i><span>علامات حدود الصفحات</span><small>&lt;!-- p --&gt;</small></div>
-        <div class="sw" data-cfg="escape"><i></i><span>تهريب أحرف Markdown</span><small>\* \_</small></div>
-        <label class="f">نمط الفقرة</label>
-        <select id="cfgWrap">
-          <option value="flow">سطر متصل (افتراضي للقراءة الآلية)</option>
-          <option value="keep">الحفاظ على الأسطر كما في المصدر</option>
+      <div class="pane" id="pane-preview">
+        <div id="preview" class="preview"><p class="muted">لا معاينة.</p></div>
+      </div>
+
+      <div class="pane" id="pane-json">
+        <pre id="jsonView">{}</pre>
+      </div>
+
+      <div class="pane" id="pane-extract">
+        <pre id="extractView">{}</pre>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <button data-action="copyMd">نسخ</button>
+        <button data-action="downloadMd">تنزيل .md</button>
+        <button data-action="downloadJson">تنزيل .json</button>
+        <button data-action="saveDoc">حفظ محلي</button>
+        <button class="primary" data-action="pushCurrent">إرسال إلى المنصة</button>
+      </div>
+    </section>
+
+    <aside class="card">
+      <h3>نقاط النهاية</h3>
+      <div id="endpointList"><p class="muted">لا نقاط بعد. أضف رابط منصتك لتفعيل الإرسال/الجلب.</p></div>
+      <button data-action="newEndpoint">+ إضافة نقطة نهاية</button>
+
+      <div id="endpointForm" hidden style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+        <label>الاسم
+          <input id="epName" placeholder="منصتي" />
+        </label>
+
+        <label>الرابط
+          <input id="epUrl" class="ltr" placeholder="https://api.example.com/v1/documents" />
+        </label>
+
+        <div class="row2">
+          <label>الطريقة
+            <select id="epMethod">
+              <option>POST</option>
+              <option>PUT</option>
+              <option>PATCH</option>
+            </select>
+          </label>
+          <label>النمط
+            <select id="epMode">
+              <option value="json">JSON</option>
+              <option value="form">multipart</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row2">
+          <label>حقل Markdown
+            <input id="epField" value="markdown" />
+          </label>
+          <label>المصادقة
+            <select id="epAuth">
+              <option value="none">بدون</option>
+              <option value="bearer">Bearer</option>
+              <option value="header">X-API-Key</option>
+              <option value="basic">Basic</option>
+            </select>
+          </label>
+        </div>
+
+        <label>قيمة المصادقة
+          <input id="epToken" class="ltr" placeholder="token أو user:pass" />
+        </label>
+
+        <label>ترويسات إضافية
+          <textarea id="epHeaders" rows="2" class="ltr" placeholder="X-Workspace: acme"></textarea>
+        </label>
+
+        <label>مسار الجلب داخل JSON
+          <input id="epPullPath" class="ltr" placeholder="data.attributes.markdown" />
+        </label>
+
+        <label class="check">
+          <input id="epAuto" type="checkbox" />
+          إرسال تلقائي بعد تحويل PDF
+        </label>
+
+        <input id="epEditingId" type="hidden" />
+
+        <div class="row">
+          <button class="primary" data-action="saveEndpoint">حفظ</button>
+          <button data-action="cancelEndpoint">إلغاء</button>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
+        <h3>عمليات الربط</h3>
+        <div class="row">
+          <button data-action="pingEndpoint">اختبار الاتصال</button>
+          <button class="primary" data-action="pushCurrent">إرسال الحالي</button>
+        </div>
+        <pre id="apiResponse" class="response">لم يتم إرسال طلب بعد.</pre>
+      </div>
+
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
+        <h3>جلب Markdown من رابط</h3>
+        <input id="pullUrl" class="ltr" placeholder="https://api.example.com/v1/documents/42.md" />
+        <input id="pullPath" class="ltr" placeholder="مسار الحقل إذا كان الرد JSON (اختياري)" />
+        <button data-action="pullUrl" style="margin-top:8px">جلب وفتح</button>
+      </div>
+
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
+        <h3>مثال كود</h3>
+        <select id="snippetLang">
+          <option value="curl">cURL</option>
+          <option value="js">JavaScript</option>
+          <option value="python">Python</option>
         </select>
+        <pre id="snippet"></pre>
+        <button data-action="copySnippet">نسخ الكود</button>
       </div>
-    </div>
-
-    <div class="card">
-      <div class="card-h"><h3>ملف التعريف السريع</h3><span class="num">PROFILES</span></div>
-      <div class="card-b">
-        <select id="profileSel">
-          <option value="general">عام — وثائق مختلطة</option>
-          <option value="arabic">عربي — عقود وتقارير</option>
-          <option value="sci">أوراق بحثية — عمودان</option>
-          <option value="invoice">فواتير وجداول بيانات</option>
-        </select>
-        <button class="btn sm mint" style="width:100%;margin-top:10px" id="btnConvertAll">⚙ تشغيل التحويل على كل الطابور</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- column: output -->
-  <div class="col">
-    <div class="card">
-      <div class="card-h">
-        <h3 id="outTitle">لوحة الإخراج</h3>
-        <span class="num" id="outMeta">—</span>
-      </div>
-      <div class="stat-strip">
-        <div><b id="sPages">0</b><span>PAGES</span></div>
-        <div><b id="sWords">0</b><span>WORDS</span></div>
-        <div><b id="sChars">0</b><span>CHARS</span></div>
-        <div><b id="sHeads">0</b><span>HEADINGS</span></div>
-        <div><b id="sTables">0</b><span>TABLES</span></div>
-        <div><b id="sRead">0<em style="font-size:.5em;color:var(--amber)">د</em></b><span>READ TIME</span></div>
-      </div>
-      <div class="tabs" id="tabs">
-        <button class="tab on" data-p="raw">Markdown خام</button>
-        <button class="tab" data-p="prev">معاينة مُصيَّغة</button>
-        <button class="tab" data-p="json">بنية JSON</button>
-        <button class="tab" data-p="extract">قواعد الاستخراج<span class="badge" id="bxCount">0</span></button>
-        <button class="tab" data-p="tables">الجداول المستخرجة<span class="badge" id="bxtCount">0</span></button>
-        <div class="tab-ind" id="tabInd"></div>
-      </div>
-      <div class="out-body">
-        <div class="pane on" data-p="raw"><textarea id="mdRaw" spellcheck="false" placeholder="# مرحباً&#10;&#10;حوّل ملف PDF لتظهر النتيجة هنا..."></textarea></div>
-        <div class="pane preview" data-p="prev"></div>
-        <div class="pane" data-p="json"><pre class="json-view" id="jsonView">{ }</pre></div>
-        <div class="pane" data-p="extract"><div class="card-b" id="extractPane"></div></div>
-        <div class="pane" data-p="tables"><div class="card-b" id="tablesPane"></div></div>
-      </div>
-      <div class="toolbar">
-        <button class="btn sm" id="btnCopy">⧉ نسخ Markdown</button>
-        <button class="btn sm" id="btnDlMd">↓ تنزيل .md</button>
-        <button class="btn sm" id="btnDlJson">↓ تنزيل .json</button>
-        <button class="btn sm" id="btnDlBundle">↓ حزمة (md+json)</button>
-        <button class="btn sm gh" id="btnSaveLib">★ حفظ في المكتبة</button>
-        <button class="btn xs gh" id="btnBeautify" title="إعادة تنسيق الفراغات والفواصل">↻ تنسيق</button>
-        <span style="flex:1"></span>
-        <button class="btn sm mint" id="btnPushNow">⇪ إرسال إلى المنصة</button>
-      </div>
-      <div id="warnSlot"></div>
-    </div>
-  </div>
-
-  <!-- column: linking -->
-  <div class="col">
-    <div class="card">
-      <div class="card-h"><h3>ربط المنصّات</h3><span class="num" id="epCount">0</span></div>
-      <div class="card-b">
-        <div id="epList"></div>
-        <button class="btn sm" style="width:100%" id="btnAddEp">＋ إضافة نقطة نهاية</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-h"><h3>لوحة الربط</h3><span class="num">LINK OPS</span></div>
-      <div class="card-b">
-        <div class="subtabs" id="subtabs">
-          <button class="on" data-s="push">إرسال</button>
-          <button data-s="pull">جلب</button>
-          <button data-s="code">أكواد</button>
-          <button data-s="health">مراقبة</button>
-        </div>
-
-        <div class="subpane on" data-s="push">
-          <div class="ttl-mini">ما الذي سيُرسل؟</div>
-          <div class="kv"><span>METHOD</span><b id="pvMethod">—</b></div>
-          <div class="kv"><span>MODE</span><b id="pvMode">—</b></div>
-          <div class="kv"><span>MD FIELD</span><b id="pvField">—</b></div>
-          <div class="kv"><span>PAYLOAD SIZE</span><b id="pvSize">—</b></div>
-          <div style="display:flex;gap:6px;margin-top:12px">
-            <button class="btn sm" id="btnPing" style="flex:1">⇄ اختبار الاتصال</button>
-            <button class="btn sm pri" id="btnPush" style="flex:1">⇪ إرسال الآن</button>
-          </div>
-          <button class="btn xs gh" id="btnPreviewReq" style="width:100%;margin-top:6px">عرض الطلب المتوقع</button>
-          <div class="resp" id="reqPrev" style="display:none"></div>
-          <div class="resp" id="pushResp" style="display:none"></div>
-        </div>
-
-        <div class="subpane" data-s="pull">
-          <div class="ttl-mini">جلب Markdown من رابط قائم</div>
-          <input type="url" id="pullUrl" placeholder="https://platform.test/docs/42.md" dir="ltr">
-          <label class="f">مسافة الحقل داخل JSON (اتركه فارغًا لو الرد نص خام)</label>
-          <input type="text" id="pullPath" placeholder="data.markdown" dir="ltr">
-          <label class="f">معرّف نقطة النهاية للاستخدام كقاعدة</label>
-          <select id="pullEp"><option value="">— مباشر —</option></select>
-          <button class="btn sm" id="btnPull" style="width:100%;margin-top:11px">⇩ جلب وتحميل في المحرّر</button>
-          <div class="warnbox" style="border-color:#25455c;background:rgba(95,179,255,.06);color:#a9cfea">
-            <b>NOTE</b>الجلب من متصفحك يخضع لسياسة CORS لدى الخادم. فعّل <code style="direction:ltr">Access-Control-Allow-Origin</code> أو استخدم حقل الوكيل.
-          </div>
-        </div>
-
-        <div class="subpane" data-s="code">
-          <div class="ttl-mini">لقطات جاهزة لمنصتك</div>
-          <select id="snipLang">
-            <option value="curl">cURL</option>
-            <option value="js">JavaScript / fetch</option>
-            <option value="node">Node.js</option>
-            <option value="py">Python · requests</option>
-            <option value="php">PHP · cURL</option>
-            <option value="express">Express · مستقبل</option>
-          </select>
-          <div class="resp" id="snipOut" style="max-height:300px"></div>
-          <button class="btn xs" id="btnCopySnip" style="width:100%;margin-top:8px">⧉ نسخ الكود</button>
-        </div>
-
-        <div class="subpane" data-s="health">
-          <div class="ttl-mini">مراقبة دورية للنقطة المختارة</div>
-          <div class="grid2">
-            <div><label class="f" style="margin-top:0">الفريق (ث)</label><input type="number" id="hbEvery" value="30" min="5"></div>
-            <div><label class="f" style="margin-top:0">الحالة</label><div class="q-st" id="hbState" style="padding:7px 8px;text-align:center">OFF</div></div>
-          </div>
-          <div class="kv" style="margin-top:10px"><span>LAST CHECK</span><b id="hbLast">—</b></div>
-          <div class="kv"><span>LATENCY</span><b id="hbLat">—</b></div>
-          <div class="kv"><span>SUCC / FAIL</span><b id="hbRatio">0 / 0</b></div>
-          <button class="btn sm" id="btnHb" style="width:100%;margin-top:11px">▶ تشغيل المراقبة</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-h"><h3>OCR خارجي</h3><span class="num">SCAN</span></div>
-      <div class="card-b">
-        <p style="font-size:12.5px;color:var(--tx3);margin:0 0 10px">إن كانت الصفحة صورة بلا طبقة نصية، أرسلها إلى خدمة OCR مربوطة ثم أعد التغذية.</p>
-        <select id="ocrEp"><option value="">— غير مفعّل —</option></select>
-        <button class="btn sm" id="btnOcr" style="width:100%;margin-top:9px">⇪ إرسال الملف الأصلي للنص المُضطرَب</button>
-      </div>
-    </div>
+    </aside>
   </div>
 </main>
 
-<!-- ================= HOW ================= -->
-<section class="band" id="how">
-  <div class="band-h reveal">
-    <h2>كيف يقرأ المحرّك صفحتك</h2>
-    <p>لا نصّ مُسطَّح هنا: كل خطوة تعيد بناء العلاقة المكانية بين الرموز حتى يخرج Markdown قابلًا للفرز والبحث والتغذية الآلية.</p>
-  </div>
-  <div class="pipe reveal">
-    <div class="step"><div class="st-n">01</div><h4>الرموز ومواضعها</h4><p>قراءة <code style="direction:ltr;font-size:11px">getTextContent</code> مع التحويل المصفوفي لكل رمز: النقطة (x,y)، الارتفاع، اسم الخط، وعرض التقدم.</p></div>
-    <div class="step"><div class="st-n">02</div><h4>تجزئة الأعمدة</h4><p>مخطط إشغال أفقي يكشف الفراغات الكبيرة ويقسّم الصفحة إلى عمودين أو ثلاثة قبل القراءة.</p></div>
-    <div class="step"><div class="st-n">03</div><h4>الأسطر والاتجاه</h4><p>تجميع الرموز بمركز رأسّي متقارب، ثم ترتيبها بصرًًا حسب اتجاه النص: عربي يمين→يسار، لاتيني العكس.</p></div>
-    <div class="step"><div class="st-n">04</div><h4>التصنيف</h4><p>حجم الخط مقابل وسيط المستند ⇒ عنوان H1-H6. البادئات ⇒ قوائم. محاذاة الأعمدة الثابتة ⇒ جداول. أحادي المسافة ⇒ كود.</p></div>
-    <div class="step"><div class="st-n">05</div><h4>التصدير والربط</h4><p>Markdown + شجرة أقسام JSON + نتائج قواعد الاستخراج، تُدفَع لنقطتك أو تُجلب منها.</p></div>
-  </div>
-  <div class="flow" aria-hidden="true"><i style="animation-delay:0s"></i><i style="animation-delay:1.1s"></i><i style="animation-delay:2.2s"></i></div>
-</section>
-
-<!-- ================= LIBRARY ================= -->
-<section class="band" id="library" style="padding-top:14px">
-  <div class="band-h reveal">
-    <h2>مكتبة المستندات</h2>
-    <p>نسخ محفوظة محليًا بمعرّف ثابت، لتعود إليها أو تُعيد دفعها دون إعادة التحويل.</p>
-    <span style="flex:1"></span>
-    <button class="btn sm gh" id="btnClearLib">✕ إفراغ المكتبة</button>
-  </div>
-  <div class="lib reveal" id="libGrid"></div>
-</section>
-
-<!-- ================= CONTRACT ================= -->
-<section class="band" id="contract" style="padding-top:14px">
-  <div class="band-h reveal">
-    <h2>عقد الـ API المقترح</h2>
-    <p>نفّذه في منصتك القائمة فيلتصق بها الطرفان بلا تعديل: الإرسال يستقبل هذا الشكل، والجلب يردّ بهذا الشكل.</p>
-  </div>
-  <div class="studio reveal" style="padding:0;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
-    <div class="card"><div class="card-h"><h3>POST — استقبال</h3><span class="num">SEND</span></div>
-      <div class="card-b"><div class="resp" style="max-height:none" id="ctReq"></div></div></div>
-    <div class="card"><div class="card-h"><h3>200 — الرد المطلوب</h3><span class="num">RESPONSE</span></div>
-      <div class="card-b"><div class="resp" style="max-height:none" id="ctRes"></div></div></div>
-    <div class="card"><div class="card-h"><h3>GET — جلب الملف</h3><span class="num">PULL</span></div>
-      <div class="card-b"><div class="resp" style="max-height:none" id="ctGet"></div>
-      <div class="warnbox" style="border-color:#2b5449;background:rgba(63,217,164,.06);color:#a6e6cd"><b>CORS</b>
-        أضف: <code style="direction:ltr">Access-Control-Allow-Origin: *</code> و<code style="direction:ltr">Access-Control-Allow-Headers: Content-Type, Authorization</code>
-        و<code style="direction:ltr">Content-Type: text/markdown; charset=utf-8</code> عند إرجاع النص خامًا.</div></div></div>
-  </div>
-</section>
-
-<footer>
-  <div class="foot-in">
-    <div>سَنَد · محرك استخراج على جهة العميل · pdf.js 3.11 · لا تخزين على خادم وسيط</div>
-    <div id="footStat">READY</div>
-  </div>
-</footer>
-</div>
-
-<!-- modal -->
-<div class="modal" id="epModal">
-  <div class="modal-in">
-    <div class="modal-h"><h3 id="epmTitle">نقطة نهاية جديدة</h3><button id="epmClose">✕</button></div>
-    <div class="modal-b">
-      <div class="grid2">
-        <div><label class="f" style="margin-top:0">الاسم</label><input type="text" id="epName" placeholder="منصتي الإنتاجية"></div>
-        <div><label class="f" style="margin-top:0">الطريقة</label>
-          <select id="epMethod"><option>POST</option><option>PUT</option><option>PATCH</option></select></div>
-      </div>
-      <label class="f">الرابط</label>
-      <input type="url" id="epUrl" placeholder="https://api.platform.test/v1/documents" dir="ltr">
-      <div class="grid2">
-        <div><label class="f">نمط الإرسال</label>
-          <select id="epMode"><option value="json">JSON body</option><option value="form">multipart (ملف .md)</option></select></div>
-        <div><label class="f">اسم حقل الـ Markdown</label><input type="text" id="epField" value="markdown" dir="ltr"></div>
-      </div>
-      <div class="grid2">
-        <div><label class="f">المصادقة</label>
-          <select id="epAuth"><option value="none">بدون</option><option value="bearer">Bearer Token</option><option value="header">API Key Header</option><option value="basic">Basic (user:pass)</option></select></div>
-        <div><label class="f">القيمة / اسم الترويسة</label><input type="text" id="epToken" placeholder="sk_live_…" dir="ltr"></div>
-      </div>
-      <label class="f">ترويسات إضافية (كل سطر: Key: Value)</label>
-      <textarea id="epHeaders" rows="2" placeholder="X-Workspace: acme"></textarea>
-      <div class="grid2">
-        <div><label class="f">مسار الجلب داخل الرد</label><input type="text" id="epPullPath" placeholder="data.attributes.markdown" dir="ltr"></div>
-        <div><label class="f">بادئة وكيل (اختياري لتجاوز CORS)</label><input type="text" id="epProxy" placeholder="https://my-proxy/?url=" dir="ltr"></div>
-      </div>
-      <div class="sw on" id="epAutoWrap" data-k="autoPush" style="margin-top:12px"><i></i><span>إرسال تلقائي بعد كل تحويل ناجح</span><small>AUTO</small></div>
-      <div class="sw" id="epSendStruct" data-k="sendStructure"><i></i><span>إرفاق بنية JSON مع الملف</span><small>STRUCT</small></div>
-    </div>
-    <div class="modal-f">
-      <button class="btn gh" id="epmCancel">إلغاء</button>
-      <button class="btn pri" id="epmSave">حفظ النقطة</button>
-    </div>
-  </div>
-</div>
-
-<div class="toasts" id="toasts"></div>
-<input type="file" id="filePick" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown" multiple hidden>
+<div id="toasts"></div>
 
 <script>
-/* =====================================================================
-   سَنَد — PDF → Markdown studio  (single file, client-side)
-   ===================================================================== */
 (function(){
 "use strict";
-const $=(s,r)=>(r||document).querySelector(s), $$=(s,r)=>[...(r||document).querySelectorAll(s)];
-const tick=()=>new Promise(r=>setTimeout(r,0));
-const pad=n=>String(n).padStart(2,'0');
-const nowT=()=>{const d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());};
-const uid=p=>p+Math.random().toString(36).slice(2,8);
-const fmtBytes=b=>b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(2)+' MB';
 
-/* ---------- safe storage ---------- */
-const store=(()=>{let ok=true;try{localStorage.setItem('__t','1');localStorage.removeItem('__t')}catch(e){ok=false}
-  const mem={};return{get(k,d){try{const v=ok?localStorage.getItem(k):mem[k];return v?JSON.parse(v):d}catch(e){return d}},
-  set(k,v){try{const s=JSON.stringify(v);ok?localStorage.setItem(k,s):mem[k]=s;return true}catch(e){return false}},
-  del(k){try{ok?localStorage.removeItem(k):delete mem[k]}catch(e){}}};})();
+var $ = function(sel, root){ return (root || document).querySelector(sel); };
+var $$ = function(sel, root){ return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
 
-/* ---------- state ---------- */
-const S={
-  files:[],            // {id,name,size,type,buffer,status,progress,pages,err}
-  cur:null,            // current result {markdown,structure,tables,stats,warnings,sourceTitle,fileName}
-  cfg:{columns:1,headings:1,lists:1,tables:1,furniture:1,code:1,links:0,frontmatter:0,pageMarks:1,escape:0,wrap:'flow'},
-  eps:[], selEp:null,
-  rules:[], lib:[],
-  hb:{on:false,timer:null,last:'—',lat:'—',ok:0,bad:0},
-  busy:false
+var state = {
+  docs: [],
+  currentId: null,
+  endpoints: [],
+  selectedEndpointId: null,
+  busy: false
 };
-const LS={eps:'sanad.eps',cfg:'sanad.cfg',rules:'sanad.rules',lib:'sanad.lib'};
 
-/* ---------- log & toast ---------- */
-let logN=0;
-function log(msg,cls){
-  const b=$('#log');const d=document.createElement('div');
-  d.innerHTML='<span class="lg-t">'+nowT()+'</span> <span class="'+(cls||'lg-i')+'">'+msg+'</span>';
-  b.appendChild(d);b.scrollTop=b.scrollHeight;logN++;$('#logCount').textContent=logN+' lines';
-  while(b.children.length>300)b.removeChild(b.firstChild);
-}
-function toast(title,msg,kind){
-  const t=document.createElement('div');t.className='toast '+(kind||'');
-  t.innerHTML='<b>'+title+'</b>'+msg;$('#toasts').appendChild(t);
-  setTimeout(()=>{t.style.transition='.35s';t.style.opacity=0;t.style.transform='translateX(-16px)';
-    setTimeout(()=>t.remove(),350)},4200);
-}
-function prog(p){$('#progBar').style.right=(100-Math.max(0,Math.min(100,p)))+'%';}
-function leds(){
-  const e=$('#ledEngine');e.className='led'+(window.pdfjsLib?' on':'');e.lastChild.textContent=window.pdfjsLib?'ENGINE READY':'ENGINE IDLE';
-  const f=$('#ledFiles');f.className='led'+(S.files.some(x=>x.status==='work')?' warn pulse':S.files.length?' on':'');
-  f.lastChild.textContent=S.files.length+' FILE'+(S.files.length===1?'':'S');
-  const l=$('#ledLink');const ep=selEp();
-  l.className='led'+(ep?(ep._ok===true?' on':ep._ok===false?' err':''):'');
-  l.lastChild.textContent=ep?('LINK · '+ep.name.toUpperCase()):'NO LINK';
-  $('#qCount').textContent=S.files.filter(x=>x.status==='done').length+'/'+S.files.length;
-  $('#epCount').textContent=S.eps.length;
-  $('#footStat').textContent=(S.busy?'WORKING':'READY')+' · '+(S.cur?S.cur.stats.pages+'P ':'')+nowT();
-  $('#hsDocs').textContent=S.lib.length;
+var STORAGE = {
+  endpoints: "sanad.m2.endpoints",
+  savedDocs: "sanad.m2.savedDocs"
+};
+
+function loadLS(key, fallback){
+  try {
+    var v = localStorage.getItem(key);
+    return v ? JSON.parse(v) : fallback;
+  } catch(e){
+    return fallback;
+  }
 }
 
-/* =====================================================================
-   ENGINE LOADER (multi-CDN fallback)
-   ===================================================================== */
-const CDNS=[
- {lib:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',wk:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'},
- {lib:'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',wk:'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js'},
- {lib:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',wk:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}
+function saveLS(key, value){
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch(e){
+    log("تعذّر الحفظ المحلي: " + e.message, "warn");
+    return false;
+  }
+}
+
+function uid(prefix){
+  return (prefix || "id") + "_" + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
+}
+
+function escapeHtml(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    }[c];
+  });
+}
+
+function fmtBytes(n){
+  n = Number(n) || 0;
+  if(n < 1024) return n + " B";
+  if(n < 1048576) return (n / 1024).toFixed(1) + " KB";
+  return (n / 1048576).toFixed(2) + " MB";
+}
+
+function timeNow(){
+  var d = new Date();
+  return ("0" + d.getHours()).slice(-2) + ":" +
+         ("0" + d.getMinutes()).slice(-2) + ":" +
+         ("0" + d.getSeconds()).slice(-2);
+}
+
+function debounce(fn, ms){
+  var t = null;
+  return function(){
+    var args = arguments;
+    var self = this;
+    clearTimeout(t);
+    t = setTimeout(function(){
+      fn.apply(self, args);
+    }, ms || 250);
+  };
+}
+
+function log(msg, type){
+  var box = $("#logBox");
+  if(!box) return;
+  var div = document.createElement("div");
+  div.className = type || "info";
+  div.textContent = timeNow() + "  " + msg;
+  box.appendChild(div);
+  while(box.children.length > 250) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+
+function toast(msg, type){
+  var box = $("#toasts");
+  if(!box) return;
+  var el = document.createElement("div");
+  el.className = "toast " + (type || "");
+  el.textContent = msg;
+  box.appendChild(el);
+  setTimeout(function(){
+    el.style.opacity = "0";
+    el.style.transform = "translateY(8px)";
+    setTimeout(function(){ el.remove(); }, 300);
+  }, 3500);
+}
+
+function getCurrentDoc(){
+  for(var i = 0; i < state.docs.length; i++){
+    if(state.docs[i].id === state.currentId) return state.docs[i];
+  }
+  return null;
+}
+
+function getSelectedEndpoint(){
+  for(var i = 0; i < state.endpoints.length; i++){
+    if(state.endpoints[i].id === state.selectedEndpointId) return state.endpoints[i];
+  }
+  return state.endpoints[0] || null;
+}
+
+/* ---------- PDF.js loader ---------- */
+
+var PDF_CDNS = [
+  {
+    lib: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js",
+    worker: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js"
+  },
+  {
+    lib: "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js",
+    worker: "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js"
+  },
+  {
+    lib: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+    worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"
+  }
 ];
-function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error(src));document.head.appendChild(s)})}
-let engPromise=null;
-function engine(){
+
+var pdfPromise = null;
+
+function loadScript(src){
+  return new Promise(function(resolve, reject){
+    var s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = function(){ reject(new Error("فشل تحميل: " + src)); };
+    document.head.appendChild(s);
+  });
+}
+
+function getPdfJs(){
   if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-  if(!engPromise) engPromise=(async()=>{
-    for(const c of CDNS){
-      try{ log('تحميل المحرّك من '+c.lib.replace(/^https:\/\//,'').split('/')[0],'lg-t');
-        await loadScript(c.lib);
-        if(window.pdfjsLib){window.pdfjsLib.GlobalWorkerOptions.workerSrc=c.wk;leds();
-          log('المحرّك جاهز · pdf.js '+window.pdfjsLib.version,'lg-ok');return window.pdfjsLib;}
-      }catch(e){log('فشل مزوّد CDN: '+c.lib.split('/')[2],'lg-w')}
-    }
-    throw new Error('تعذّر تحميل محرّك pdf.js — تحقّق من الاتصال بالشبكة.');
-  })();
-  return engPromise;
-}
 
-/* =====================================================================
-   TEXT / LAYOUT HELPERS
-   ===================================================================== */
-const RTL_RE=/[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
-const isRTL=s=>{const t=(s||'').replace(/\s/g,'');if(!t)return false;let r=0;for(const c of t){if(RTL_RE.test(c))r++}return r/t.length>.34};
-const AR_DIG={'\u0660':'0','\u0661':'1','\u0662':'2','\u0663':'3','\u0664':'4','\u0665':'5','\u0666':'6','\u0667':'7','\u0668':'8','\u0669':'9',
-'\u06F0':'0','\u06F1':'1','\u06F2':'2','\u06F3':'3','\u06F4':'4','\u06F5':'5','\u06F6':'6','\u06F7':'7','\u06F8':'8','\u06F9':'9'};
-const normDigits=s=>s.replace(/[\u0660-\u0669\u06F0-\u06F9]/g,c=>AR_DIG[c]||c);
-const BULLET_RE=/^\s*([•·▪▫◦∙●○■□⁃])\s+/;
-const ORDER_RE=/^\s*((?:\d{1,3}|[٠-٩۰-۹]+)\s*[.\)]|[a-zA-Z][.)]|[-–—]\s?(?=\S))\s+/;
-const MONO_RE=/mono|courier|consolas|menlo|andale|fixed|hack|inconsolata/i;
-const normKey=s=>normDigits(s).toLowerCase().replace(/[\d\s\u066B.,:؛\-–—_·•]/g,'').slice(0,60);
-
-function mdEsc(s){
-  if(!S.cfg.escape) return s.replace(/^\s*(#{1,6}\s|>\s?|\|)/,m=>'\\'+m[0]+m.slice(1));
-  return s.replace(/([\\`*_{}\[\]()#+\-.!|~<>])/g,'\\$1');
-}
-function cleanText(s){
-  return s.replace(/\u00AD/g,'').replace(/[\u200B-\u200D\uFEFF]/g,'')
-   .replace(/\uFFFD/g,'').replace(/[ \t]{2,}/g,' ').trim();
-}
-
-/* ---------- page model ---------- */
-function buildPage(tc,vp,anns){
-  const W=vp.width,H=vp.height,styles=tc.styles||{};
-  const spans=[];
-  for(const it of tc.items){
-    if(!it)continue;
-    const t=it.transform||[1,0,0,1,0,0];
-    const size=Math.abs(t[3])||Math.abs(t[0])||Math.abs(it.height)||8;
-    const x=t[4], y=H-(t[5])- (it.height||size);
-    const st=styles[it.fontName]||{};
-    spans.push({raw:it.str||'',x,y,w:it.width||0,h:it.height||size,size,
-      ff:(st.fontFamily||''),
-      bold:/bold|black|heavy|سمن|700|800|900/i.test(st.fontFamily||'')||false,
-      ital:/italic|oblique/i.test(st.fontFamily||'')||false,
-      mono:MONO_RE.test(st.fontFamily||''),empty:!cleanText(it.str)});
-  }
-  const solid=spans.filter(s=>!s.empty);
-  // column detection via horizontal occupancy
-  let splits=[];
-  if(S.cfg.columns && W>380 && solid.length>12){
-    const bin=6,n=Math.ceil(W/bin),occ=new Array(n).fill(false);
-    solid.forEach(s=>{const a=Math.max(0,Math.floor(s.x/bin)),b=Math.min(n-1,Math.ceil((s.x+s.w)/bin));for(let i=a;i<=b;i++)occ[i]=true});
-    let run=0,gaps=[];
-    for(let i=0;i<n;i++){ if(!occ[i])run++; else {if(run>=1)gaps.push({at:i-run,len:run});run=0} }
-    const minGap=Math.max(4,Math.round(W*bin*0.045/bin));
-    gaps=gaps.filter(g=>g.len>=minGap && g.at*bin>W*0.2 && (g.at+g.len)*bin<W*0.82)
-             .sort((a,b)=>b.len-a.len).slice(0,2).sort((a,b)=>a.at-b.at);
-    splits=gaps.map(g=>(g.at+g.len/2)*bin);
-  }
-  const colOf=x=>{let c=0;for(const sp of splits) if(x>sp)c++;return c};
-  solid.forEach(s=>{s.cx=s.x+s.w/2;s.cy=s.y+s.h/2;s.col=colOf(s.cx)});
-  // median size
-  const szs=solid.map(s=>s.size).sort((a,b)=>a-b);
-  const med=szs.length?szs[Math.floor(szs.length/2)]:10;
-  // group lines per column
-  const byCol={};solid.forEach(s=>{(byCol[s.col]=byCol[s.col]||[]).push(s)});
-  const lines=[];
-  Object.keys(byCol).map(Number).sort((a,b)=>a-b).forEach(c=>{
-    const arr=byCol[c].sort((a,b)=>a.cy-b.cy||a.x-b.x);
-    let cur=null;
-    for(const s of arr){
-      if(!cur||Math.abs(s.cy-cur.cy)>Math.max(2.2,med*0.52)){
-        cur={col:c,spans:[],y:s.y,cy:s.cy,size:s.size,h:s.h,x0:s.x,x1:s.x+s.w,page:vp.pageNumber};
-        lines.push(cur);
-      }
-      cur.spans.push(s);cur.cy=(cur.cy*(cur.spans.length-1)+s.cy)/cur.spans.length;
-      cur.size=Math.max(cur.size,s.size);cur.h=Math.max(cur.h,s.h);
-      cur.x0=Math.min(cur.x0,s.x);cur.x1=Math.max(cur.x1,s.x+s.w);
-    }
-  });
-  // order spans inside line (visual → logical)
-  for(const L of lines){
-    const raw=L.spans.slice().sort((a,b)=>a.x-b.x);
-    const txt0=raw.map(s=>s.raw).join('');
-    const rtl=isRTL(txt0);
-    const ord=rtl?raw.slice().reverse():raw;
-    let txt='';let prev=null;
-    for(const s of ord){
-      if(s.empty){ if(txt)txt+=' '; continue; }
-      const t=cleanText(s.raw);
-      if(!t)continue;
-      if(prev!=null){
-        const gapDir=rtl?(prev.x+prev.w)-s.x:s.x-(prev.x+prev.w);
-        txt+=(gapDir> s.size*0.22?' ':'')+t;
-      } else txt=t;
-      prev=s;
-    }
-    L.text=cleanText(txt);
-    L.bold=L.spans.some(s=>s.bold)&&L.spans.filter(s=>s.bold).length/L.spans.length>.5;
-    L.ital=L.spans.some(s=>s.ital)&&L.spans.filter(s=>s.ital).length/L.spans.length>.5;
-    L.mono=L.spans.filter(s=>s.mono).length/L.spans.length>.6;
-    L.rtl=rtl;L.cells=L.spans.filter(s=>!s.empty&&cleanText(s.raw)).map(s=>({x:s.x,t:cleanText(s.raw)}));
-    if(rtl)L.cells.reverse();
-    // link annotations
-    L.url=null;
-    if(anns&&anns.length){
-      for(const a of anns){
-        if(a.subtype!=='Link'||!a.url)continue;
-        const r=a.rect;const ay0=H-r[3],ay1=H-r[1];
-        if(L.cy>ay0-2&&L.cy<ay1+2&&L.x0<r[2]+2&&L.x1>r[0]-2){L.url=a.url;break}
-      }
-    }
-  }
-  return {lines,W,H,cols:splits.length+1,med,size:szs.length?med:10,
-    textLen:lines.reduce((a,l)=>a+l.text.length,0)};
-}
-
-/* ---------- tables detection over a run of lines ---------- */
-function tryTable(run){
-  if(!S.cfg.tables||run.length<2)return null;
-  const cand=run.filter(l=>l.cells.length>=2);
-  if(cand.length<2||cand.length/run.length<.6)return null;
-  const xs=[];cand.forEach(l=>l.cells.forEach(c=>xs.push(c.x)));
-  xs.sort((a,b)=>a-b);
-  const clusters=[];for(const x of xs){const c=clusters[clusters.length-1];
-    if(c&&Math.abs(c.mean-x)<Math.max(9,c.n*0.6))  {c.sum+=x;c.n++;c.mean=c.sum/c.n}else clusters.push({sum:x,n:1,mean:x})}
-  if(clusters.length<2||clusters.length>9)return null;
-  const nCol=clusters.length;
-  const widths=cand.map(l=>l.cells.length);
-  const mode=widths.sort((a,b)=>a-b)[Math.floor(widths.length/2)];
-  if(mode<2||cand.filter(l=>l.cells.length>=mode-1).length/cand.length<.7)return null;
-  const rows=cand.map(l=>{
-    const cells=new Array(nCol).fill('');
-    l.cells.forEach(c=>{let bi=0,bd=1e9;clusters.forEach((cl,i)=>{const d=Math.abs(cl.mean-c.x);if(d<bd){bd=d;bi=i}});
-      cells[bi]=(cells[bi]?cells[bi]+' ':'')+c.t});
-    return cells;
-  }).filter(r=>r.some(c=>c.trim()));
-  if(rows.length<2)return null;
-  const sepIdx=rows.findIndex(r=>r.every(c=>/^[:\-\s]*-+[:\-\s]*$/.test(c)||c===''));
-  if(sepIdx>-1)rows.splice(sepIdx,1);
-  const head=rows.shift();
-  return {type:'table',head,rows,page:run[0].page};
-}
-
-/* ---------- blocks ---------- */
-function blocksFrom(pages){
-  // global body size = weighted median
-  const hist={};let tot=0;
-  pages.forEach(p=>p.lines.forEach(l=>{const k=l.size.toFixed(1);hist[k]=(hist[k]||0)+l.text.length;tot+=l.text.length}));
-  let acc=0,bodySize=11;
-  for(const k of Object.keys(hist).sort((a,b)=>a-b)){acc+=hist[k];if(acc>=tot*.5){bodySize=parseFloat(k);break}}
-  const big=[];pages.forEach(p=>p.lines.forEach(l=>{if(l.size>bodySize*1.16&&l.text.length<220)big.push(l.size)}));
-  big.sort((a,b)=>b-a);
-  const bands=[];big.forEach(s=>{if(!bands.length||Math.abs(bands[bands.length-1]-s)>bodySize*.11)bands.push(s)});
-  const lvlOf=s=>{for(let i=0;i<bands.length;i++)if(s>=bands[i]*0.955)return Math.min(6,i+1);return 6};
-
-  // furniture (repeated header/footer)
-  const dropKeys=new Set(),furn={head:null,foot:null};
-  if(S.cfg.furniture&&pages.length>2){
-    const hc={},fc={};
-    pages.forEach(p=>{const L=p.lines;if(!L.length)return;
-      const first=L[0],last=L[L.length-1];
-      if(first.text.length<90){const k=normKey(first.text);if(k)(hc[k]=hc[k]||[]).push(1)}
-      if(last.text.length<90){const k=normKey(last.text);if(k)(fc[k]=fc[k]||[]).push(1)}
-    });
-    const thr=Math.max(3,Math.ceil(pages.length*.55));
-    const pick=o=>Object.keys(o).filter(k=>o[k].length>=thr).sort((a,b)=>o[b].length-o[a].length)[0];
-    const hk=pick(hc),fk=pick(fc);
-    if(hk){furn.head=hk;pages.forEach(p=>{if(p.lines[0]&&normKey(p.lines[0].text)===hk)p.lines[0]._furn=1})}
-    if(fk){furn.foot=fk;pages.forEach(p=>{const L=p.lines;if(L.length&&normKey(L[L.length-1].text)===fk)L[L.length-1]._furn=1})}
-    // page-number patterns
-    pages.forEach(p=>p.lines.forEach(l=>{
-      const t=normDigits(l.text);
-      if(/^(page|صفحة|ص)\s*\d+(\s*(of|من)\s*\d+)?$|^\d{1,4}\s*\/\s*\d{1,4}$|^-\s*\d{1,4}\s*-$/.test(t.trim()))l._furn=1;
-    }));
-  }
-
-  const blocks=[];
-  pages.forEach(p=>{
-    const byCol={};p.lines.forEach(l=>{(byCol[l.col]=byCol[l.col]||[]).push(l)});
-    Object.keys(byCol).map(Number).sort((a,b)=>a-b).forEach(c=>{
-      const ls=byCol[c].filter(l=>l.text&&!l._furn);
-      if(!ls.length)return;
-      const baseX=Math.min(...ls.map(l=>l.x0));
-      let i=0;
-      while(i<ls.length){
-        const L=ls[i];
-        // table attempt
-        if(L.cells.length>=2){
-          let run=[L],j=i+1;
-          while(j<ls.length&&ls[j].cells.length>=2&&Math.abs(ls[j].y-(run[run.length-1].y+run[run.length-1].h))<L.size*3.2){run.push(ls[j]);j++}
-          const tb=tryTable(run);
-          if(tb){tb.page=p.pageNumber;blocks.push(tb);i=j;continue}
-        }
-        const t=L.text,tn=normDigits(t).trim();
-        // code block
-        if(S.cfg.code&&L.mono){
-          const buf=[];let j=i;
-          while(j<ls.length&&ls[j].mono){buf.push(ls[j].text);j++}
-          if(buf.length){blocks.push({type:'code',text:buf.join('\n'),page:p.pageNumber});i=j;continue}
-        }
-        // heading
-        if(S.cfg.headings&&(L.size>bodySize*1.16&&t.length<230||L.bold&&t.length<80&&!/[.:]\s*$/.test(t))){
-          blocks.push({type:'heading',level:lvlOf(L.size),text:t.replace(/\s+/g,' '),page:p.pageNumber});
-          i++;continue;
-        }
-        // hr
-        if(/^[-–—_·•\s]{4,}$/.test(t)&&/\d/.test(t)===false){blocks.push({type:'hr',page:p.pageNumber});i++;continue}
-        // list
-        if(S.cfg.lists){
-          const bm=t.match(BULLET_RE),om=tn.match(ORDER_RE);
-          if(bm||om){
-            const ordered=!!om&&!bm;
-            const item={type:'list',ordered,level:Math.max(0,Math.min(3,Math.round((L.x0-baseX)/(bodySize*1.4)))),
-              text:(bm?t.slice(bm[0].length):tn.slice(om[0].length)).trim(),page:p.pageNumber,more:[]};
-            blocks.push(item);i++;
-            // continuation lines
-            while(i<ls.length){
-              const N=ls[i];
-              if(N.cells.length>=2)break;
-              if(BULLET_RE.test(N.text)||ORDER_RE.test(normDigits(N.text)))break;
-              if(N.size>bodySize*1.16&&N.text.length<200)break;
-              if(Math.abs(N.y-(blocks[blocks.length-1].lastY||N.y))>N.size*2.4)break;
-              if(N.x0<baseX-4)break;
-              const lb=blocks[blocks.length-1];lb.text+=' '+N.text;lb.lastY=N.y+N.h;i++;
-            }
-            blocks[blocks.length-1].lastY=L.y+L.h;
-            continue;
+  if(!pdfPromise){
+    pdfPromise = new Promise(async function(resolve, reject){
+      for(var i = 0; i < PDF_CDNS.length; i++){
+        var c = PDF_CDNS[i];
+        try {
+          log("تحميل محرك PDF من " + c.lib.split("/")[2], "info");
+          await loadScript(c.lib);
+          if(window.pdfjsLib){
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = c.worker;
+            log("محرك PDF جاهز، إصدار " + window.pdfjsLib.version, "ok");
+            resolve(window.pdfjsLib);
+            return;
           }
+        } catch(e){
+          log(e.message, "warn");
         }
-        // quote
-        if(/^[›»>|]\s?/.test(t)){blocks.push({type:'quote',text:t.replace(/^[›»>|]\s?/,''),page:p.pageNumber});i++;continue}
-        // paragraph
-        const para={type:'para',lines:[t],page:p.pageNumber,rtl:L.rtl};
-        let lastY=L.y+L.h,j=i+1;
-        while(j<ls.length){
-          const N=ls[j];
-          if(N.cells.length>=2)break;
-          if(BULLET_RE.test(N.text)||ORDER_RE.test(normDigits(N.text)))break;
-          if(S.cfg.headings&&N.size>bodySize*1.16&&N.text.length<230)break;
-          if(N.bold&&N.text.length<80&&/[.:]$/.test(N.text)===false&&N.size>=bodySize*1.02)break;
-          const gap=N.y-lastY;
-          if(gap>N.size*2.1||gap<-N.size)break;
-          if(N.x0>baseX+bodySize*1.1)break;   // new paragraph by indent
-          if(/[.,؛:]$/.test(para.lines[para.lines.length-1])&&gap>N.size*.75)break;
-          para.lines.push(N.text);lastY=N.y+N.h;j++;
-        }
-        blocks.push(para);i=j;
       }
-      blocks.push({type:'_colend',page:p.pageNumber});
+      reject(new Error("تعذّر تحميل محرك pdf.js. تحقق من الإنترنت أو افتح الملف عبر خادم محلي."));
     });
-    blocks.push({type:'_pageend',page:p.pageNumber});
+  }
+
+  return pdfPromise;
+}
+
+/* ---------- text helpers ---------- */
+
+function cleanText(s){
+  return String(s || "")
+    .replace(/\u00AD/g, "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isRTLText(s){
+  var letters = String(s || "").replace(/\s/g, "");
+  if(!letters) return false;
+
+  var rtl = 0;
+  for(var i = 0; i < letters.length; i++){
+    var code = letters.charCodeAt(i);
+    if(
+      (code >= 0x0600 && code <= 0x06FF) ||
+      (code >= 0x0750 && code <= 0x077F) ||
+      (code >= 0x08A0 && code <= 0x08FF) ||
+      (code >= 0xFB50 && code <= 0xFDFF) ||
+      (code >= 0xFE70 && code <= 0xFEFF)
+    ){
+      rtl++;
+    }
+  }
+
+  return rtl / letters.length > 0.34;
+}
+
+function groupTextItems(items, pageHeight){
+  var spans = [];
+
+  for(var i = 0; i < items.length; i++){
+    var it = items[i];
+    if(!it) continue;
+
+    var str = it.str || "";
+    if(!cleanText(str)) continue;
+
+    var tr = it.transform || [1,0,0,1,0,0];
+    var x = Number(tr[4]) || 0;
+    var y = Number(pageHeight) - (Number(tr[5]) || 0);
+    var size = Math.abs(Number(tr[3])) || Number(it.height) || 10;
+    var width = Number(it.width) || 0;
+
+    spans.push({
+      str: str,
+      x: x,
+      y: y,
+      width: width,
+      size: size
+    });
+  }
+
+  spans.sort(function(a,b){
+    return (a.y - b.y) || (a.x - b.x);
   });
-  return {blocks,bodySize,bands:bands.length,furniture:furn};
+
+  var lines = [];
+  var cur = null;
+  var tol = 3;
+
+  for(var j = 0; j < spans.length; j++){
+    var sp = spans[j];
+    if(!cur || Math.abs(sp.y - cur.y) > tol){
+      if(cur) lines.push(cur);
+      cur = {
+        y: sp.y,
+        size: sp.size,
+        parts: []
+      };
+    }
+    cur.parts.push(sp);
+    if(sp.size > cur.size) cur.size = sp.size;
+  }
+
+  if(cur) lines.push(cur);
+
+  return lines.map(function(line){
+    var parts = line.parts.slice();
+    var sample = parts.map(function(p){ return p.str; }).join(" ");
+    var rtl = isRTLText(sample);
+
+    parts.sort(function(a,b){
+      return rtl ? (b.x - a.x) : (a.x - b.x);
+    });
+
+    var text = "";
+    var prev = null;
+
+    for(var k = 0; k < parts.length; k++){
+      var p = parts[k];
+      var s = cleanText(p.str);
+      if(!s) continue;
+
+      if(prev){
+        var gap = rtl
+          ? (prev.x - (p.x + p.width))
+          : (p.x - (prev.x + prev.width));
+
+        if(gap > Math.max(1, p.size * 0.18)) text += " ";
+      }
+
+      text += s;
+      prev = p;
+    }
+
+    return {
+      text: cleanText(text),
+      size: line.size,
+      y: line.y
+    };
+  }).filter(function(l){
+    return l.text;
+  });
 }
 
-/* ---------- markdown assembly ---------- */
-function toMarkdown(blocks,meta,pages){
-  const out=[];
-  if(S.cfg.frontmatter){
-    const fm=['---'];
-    fm.push('title: '+JSON.stringify(meta.title||'untitled'));
-    if(meta.author)fm.push('author: '+JSON.stringify(meta.author));
-    if(meta.subject)fm.push('subject: '+JSON.stringify(meta.subject));
-    fm.push('source: '+JSON.stringify(meta.fileName||''));
-    fm.push('pages: '+pages.length);
-    fm.push('words: '+meta.words);
-    fm.push('generator: "sanad-pdf2md"');
-    fm.push('converted_at: '+new Date().toISOString());
-    fm.push('lang: '+(meta.rtl?'ar':'und'));
-    fm.push('---');out.push(fm.join('\n'));
-  }
-  let lastPage=0;
-  for(const b of blocks){
-    if(b.type==='_pageend'){ if(S.cfg.pageMarks)out.push('<!-- صفحة '+(b.page)+' -->'); lastPage=b.page; continue }
-    if(b.type==='_colend')continue;
-    if(S.cfg.pageMarks&&lastPage===0)lastPage=b.page;
-    switch(b.type){
-      case 'heading':out.push('#'.repeat(b.level)+' '+mdEsc(b.text));break;
-      case 'hr':out.push('---');break;
-      case 'code':out.push('```\n'+b.text+'\n```');break;
-      case 'quote':out.push('> '+b.text.split('\n').join('\n> '));break;
-      case 'para':out.push(mdEsc(S.cfg.wrap==='keep'?b.lines.join('\n'):b.lines.join(' ')));break;
-      case 'list':{
-        const ind='  '.repeat(b.level||0);
-        out.push(ind+(b.ordered?'1. ':'- ')+(b.url?'['+b.text+']('+b.url+')':mdEsc(b.text)));break;}
-      case 'table':{
-        const cell=s=>String(s||'').replace(/\|/g,'\\|').replace(/\s+/g,' ').trim();
-        out.push('| '+b.head.map(cell).join(' | ')+' |\n|'+b.head.map(()=>' --- |').join('')+'\n'+
-          b.rows.map(r=>'| '+r.map(cell).join(' | ')+' |').join('\n'));break;}
-    }
-  }
-  let md=out.join('\n\n').replace(/\n{4,}/g,'\n\n\n').trim()+'\n';
-  return md;
+function isHeadingLine(line, bodySize, text){
+  if(text.length > 180) return false;
+  if(line.size > bodySize * 1.15) return true;
+  if(line.size > bodySize * 1.05 && text.length < 80 && !/[.:،؛!?]$/.test(text)) return true;
+  return false;
 }
 
-/* ---------- structure (JSON) ---------- */
-function buildStructure(md,blocks,meta){
-  const sections=[];let cur={level:0,title:meta.title||'المستند',path:[],body:[],items:[],tables:[]};
-  sections.push(cur);
-  for(const b of blocks){
-    if(b.type==='_pageend'||b.type==='_colend')continue;
-    if(b.type==='heading'){
-      while(sections.length>1&&sections[sections.length-1].level>=b.level)sections.pop();
-      const parent=sections[sections.length-1];
-      cur={level:b.level,title:b.text,path:[...parent.path,parent.title].filter(Boolean),body:[],items:[],tables:[],page:b.page};
-      parent.children=parent.children||[];parent.children.push(cur);sections.push(cur);continue;
+function headingLevel(size, bodySize){
+  var r = size / (bodySize || 12);
+  if(r > 1.8) return 1;
+  if(r > 1.5) return 2;
+  if(r > 1.25) return 3;
+  if(r > 1.1) return 4;
+  return 5;
+}
+
+function isBullet(t){
+  return /^\s*[•·▪▫◦∙●○\-–—]\s+/.test(t);
+}
+
+function stripBullet(t){
+  return t.replace(/^\s*[•·▪▫◦∙●○\-–—]\s+/, "").trim();
+}
+
+function isOrdered(t){
+  return /^\s*(?:\d{1,3}|[٠-٩۰-۹]+)\s*[.)]\s+/.test(t);
+}
+
+function stripOrdered(t){
+  return t.replace(/^\s*(?:\d{1,3}|[٠-٩۰-۹]+)\s*[.)]\s+/, "").trim();
+}
+
+function pagesToMarkdown(pages, info, fileName){
+  var sizes = [];
+  pages.forEach(function(p){
+    p.lines.forEach(function(l){
+      sizes.push(l.size);
+    });
+  });
+
+  sizes.sort(function(a,b){ return a - b; });
+  var bodySize = sizes.length ? sizes[Math.floor(sizes.length / 2)] : 12;
+
+  var title = cleanText(info && info.Title) || String(fileName || "مستند").replace(/\.pdf$/i, "");
+  var md = ["# " + title];
+
+  pages.forEach(function(page){
+    md.push("");
+    md.push("<!-- صفحة " + page.number + " -->");
+
+    var paragraph = [];
+
+    function flush(){
+      if(paragraph.length){
+        md.push(cleanText(paragraph.join(" ")));
+        paragraph = [];
+      }
     }
-    if(!cur)continue;
-    if(b.type==='list')cur.items.push({text:b.text,ordered:!!b.ordered,level:b.level||0});
-    else if(b.type==='table')cur.tables.push({head:b.head,rows:b.rows});
-    else if(b.type==='code')cur.body.push({type:'code',text:b.text});
-    else cur.body.push({type:b.type==='quote'?'quote':'text',text:Array.isArray(b.lines)?b.lines.join(' '):b.text});
+
+    page.lines.forEach(function(line){
+      var text = line.text;
+      if(!text){
+        flush();
+        return;
+      }
+
+      if(isHeadingLine(line, bodySize, text)){
+        flush();
+        md.push(new Array(headingLevel(line.size, bodySize) + 1).join("#") + " " + text);
+      } else if(isBullet(text)){
+        flush();
+        md.push("- " + stripBullet(text));
+      } else if(isOrdered(text)){
+        flush();
+        md.push("1. " + stripOrdered(text));
+      } else {
+        paragraph.push(text);
+        if(/[.:،؛!?]$/.test(text) && paragraph.length > 2) flush();
+      }
+    });
+
+    flush();
+  });
+
+  return md.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+}
+
+async function convertPdf(file){
+  var pdfjs = await getPdfJs();
+  var buf = await file.arrayBuffer();
+
+  var pdf = await pdfjs.getDocument({
+    data: new Uint8Array(buf),
+    isEvalSupported: false,
+    useSystemFonts: false
+  }).promise;
+
+  var meta = { info: {} };
+  try {
+    meta = await pdf.getMetadata();
+  } catch(e){}
+
+  var pages = [];
+
+  for(var i = 1; i <= pdf.numPages; i++){
+    var page = await pdf.getPage(i);
+    var viewport = page.getViewport({ scale: 1 });
+    var tc = await page.getTextContent();
+
+    pages.push({
+      number: i,
+      lines: groupTextItems(tc.items, viewport.height)
+    });
+
+    if(i % 5 === 0 || i === pdf.numPages){
+      log("تمت قراءة صفحة " + i + " من " + pdf.numPages, "info");
+    }
+
+    await new Promise(function(r){ setTimeout(r, 0); });
   }
-  const flat=[];(function walk(s){flat.push({level:s.level,title:s.title,path:s.path,
-    words:s.body.reduce((a,x)=>a+(x.text||'').split(/\s+/).length,0)+s.items.reduce((a,x)=>a+x.text.split(/\s+/).length,0),
-    items:s.items.length,tables:s.tables.length,page:s.page||null});(s.children||[]).forEach(walk)})(sections[0]);
-  const tables=[];blocks.forEach(b=>{if(b.type==='table')tables.push({head:b.head,rows:b.rows,page:b.page})});
+
+  try {
+    await pdf.destroy();
+  } catch(e){}
+
+  var markdown = pagesToMarkdown(pages, meta.info || {}, file.name);
+  return makeDocFromMarkdown(file.name, markdown, "pdf", file.size, meta.info || {});
+}
+
+function makeDocFromMarkdown(name, markdown, type, size, info){
+  var md = String(markdown || "").trim() + "\n";
+  var stats = computeStats(md);
+
+  var doc = {
+    id: uid("doc"),
+    name: name || "document.md",
+    type: type || "md",
+    size: size || new Blob([md]).size,
+    markdown: md,
+    stats: stats,
+    structure: buildStructure(md, (info && info.Title) || name || "مستند"),
+    extracted: extractData(md),
+    createdAt: new Date().toISOString(),
+    saved: false
+  };
+
+  return doc;
+}
+
+function computeStats(md){
+  var words = (String(md).match(/\S+/g) || []).length;
   return {
-    meta:{...meta,generator:'sanad-pdf2md',convertedAt:new Date().toISOString(),
-      headings:flat.length-1,tables:tables.length,chars:md.length,words:meta.words,
-      readingTimeMin:Math.max(1,Math.round(meta.words/220))},
-    outline:flat,sections:sections[0],tables,raw:md
+    words: words,
+    chars: String(md).length,
+    headings: (String(md).match(/^#{1,6}\s/gm) || []).length,
+    lists: (String(md).match(/^\s*(?:[-*+]\s|\d+[.)]\s)/gm) || []).length,
+    pages: (String(md).match(/<!--\s*صفحة\s*\d+\s*-->/g) || []).length || 1,
+    readingMinutes: Math.max(1, Math.round(words / 220))
   };
 }
 
-/* ---------- convert one PDF ---------- */
-async function convertPdf(f,progCb){
-  const lib=await engine();
-  const doc=await lib.getDocument({data:new Uint8Array(f.buffer),isEvalSupported:false,useSystemFonts:false}).promise;
-  const info=(await doc.getMetadata().catch(()=>({info:{}}))).info||{};
-  const pages=[];const warns=[];
-  for(let i=1;i<=doc.numPages;i++){
-    const page=await doc.getPage(i);
-    const vp=page.getViewport({scale:1});
-    const tc=await page.getTextContent({normalizeWhitespace:false,disableCombineTextItems:false});
-    let anns=[];
-    if(S.cfg.links){try{anns=await page.getAnnotations()}catch(e){anns=[]}}
-    const pm=buildPage(tc,vp,anns);
-    if(pm.textLen<12)warns.push('صفحة '+i+' بلا طبقة نصية — غالبًا صورة (تحتاج OCR).');
-    pages.push(pm);
-    progCb(i/doc.numPages,i,doc.numPages);
-    await tick();
+function buildStructure(md, title){
+  var lines = String(md).split("\n");
+  var outline = [];
+  var stack = [{ level: 0, title: title || "المستند", path: [] }];
+
+  for(var i = 0; i < lines.length; i++){
+    var m = lines[i].match(/^(#{1,6})\s+(.*)$/);
+    if(!m) continue;
+
+    var level = m[1].length;
+
+    while(stack.length > 1 && stack[stack.length - 1].level >= level){
+      stack.pop();
+    }
+
+    var parent = stack[stack.length - 1];
+    var node = {
+      level: level,
+      title: cleanText(m[2]),
+      path: parent.path.concat(parent.title ? [parent.title] : [])
+    };
+
+    outline.push(node);
+    stack.push(node);
   }
-  const {blocks,bodySize,furniture}=blocksFrom(pages);
-  // enrich list urls from lines
-  blocks.forEach(b=>{});
-  const words=blocks.filter(b=>['para','list','heading','quote'].includes(b.type))
-    .reduce((a,b)=>a+((b.text||b.lines&&b.lines.join(' ')||'').match(/\S+/g)||[]).length,0);
-  const allText=blocks.map(b=>b.type==='para'?(b.lines||[]).join(' '):b.text||'').join(' ');
-  const meta={
-    title:(info.Title&&info.Title.trim())||((blocks.find(b=>b.type==='heading')||{}).text)||f.name.replace(/\.pdf$/i,''),
-    author:info.Author||'',subject:info.Subject||'',fileName:f.name,fileSize:f.size,
-    pagesCount:doc.numPages,words,rtl:isRTL(allText.slice(0,4000))
+
+  return {
+    meta: {
+      title: title || "مستند",
+      generatedAt: new Date().toISOString(),
+      stats: computeStats(md)
+    },
+    outline: outline
   };
-  const md=toMarkdown(blocks,meta,pages);
-  const structure=buildStructure(md,blocks,meta);
-  const stats={pages:doc.numPages,words,chars:md.length,
-    headings:blocks.filter(b=>b.type==='heading').length,
-    tables:blocks.filter(b=>b.type==='table').length,
-    lists:blocks.filter(b=>b.type==='list').length,
-    paras:blocks.filter(b=>b.type==='para').length,
-    bodySize:+bodySize.toFixed(1),columns:Math.max(...pages.map(p=>p.cols)),
-    read:Math.max(1,Math.round(words/220)),
-    density:+(100*(1-warns.length/Math.max(1,doc.numPages))).toFixed(1)};
-  await doc.destroy().catch(()=>{});
-  return {markdown:md,structure,blocks:blocks.filter(b=>b.type!=='_pageend'&&b.type!=='_colend'),stats,warns,meta,fileName:f.name};
 }
 
-/* =====================================================================
-   MINI MARKDOWN RENDERER
-   ===================================================================== */
-function escH(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-function inl(s){
-  s=escH(s);
-  s=s.replace(/`([^`]+)`/g,(m,a)=>'<code>'+a+'</code>');
-  s=s.replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g,'<img alt="$1" src="$2">');
-  s=s.replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
-  s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/__([^_]+)__/g,'<strong>$1</strong>');
-  s=s.replace(/(^|[^\w*])\*([^*\n]+)\*/g,'$1<em>$2</em>');
-  s=s.replace(/~~([^~]+)~~/g,'<del>$1</del>').replace(/==([^=]+)==/g,'<mark>$1</mark>');
-  return s;
-}
-function renderMD(src){
-  const L=src.replace(/\r\n?/g,'\n').split('\n');let o='',i=0;
-  const flushP=buf=>{if(buf.length)o+='<p dir="auto">'+inl(buf.join(' '))+'</p>';};
-  let pb=[];
-  while(i<L.length){
-    const ln=L[i];
-    if(/^```/.test(ln)){flushP(pb);pb=[];i++;const c=[];while(i<L.length&&!/^```/.test(L[i])){c.push(L[i]);i++}i++;
-      o+='<pre><code>'+escH(c.join('\n'))+'</code></pre>';continue}
-    if(/^\s*(&lt;!--|<!--)/.test(ln)){flushP(pb);pb=[];
-      if(/<!--\s*صفحة\s*(\d+)\s*-->/.test(ln))o+='<span class="pbreak">— صفحة '+ln.match(/(\d+)/)[1]+' —</span>';
-      i++;continue}
-    if(/^\s*$/.test(ln)){flushP(pb);pb=[];i++;continue}
-    const hm=ln.match(/^(#{1,6})\s+(.*)$/);
-    if(hm){flushP(pb);pb=[];o+='<h'+hm[1].length+' dir="auto">'+inl(hm[2])+'</h'+hm[1].length+'>';i++;continue}
-    if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(ln)){flushP(pb);pb=[];o+='<hr>';i++;continue}
-    if(/^\s*>/.test(ln)){flushP(pb);pb=[];const c=[];while(i<L.length&&/^\s*>/.test(L[i])){c.push(L[i].replace(/^\s*>\s?/,''));i++}
-      o+='<blockquote dir="auto">'+inl(c.join(' '))+'</blockquote>';continue}
-    if(/^\s*\|.*\|\s*$/.test(ln)&&i+1<L.length&&/^\s*\|[\s:|-]+\|\s*$/.test(L[i+1])){
-      flushP(pb);pb=[];const head=ln.trim().replace(/^\||\|$/g,'').split('|').map(s=>s.trim());i+=2;const rows=[];
-      while(i<L.length&&/^\s*\|.*\|\s*$/.test(L[i])){rows.push(L[i].trim().replace(/^\||\|$/g,'').split('|').map(s=>s.trim()));i++}
-      o+='<table><thead><tr>'+head.map(h=>'<th>'+inl(h)+'</th>').join('')+'</tr></thead><tbody>'+
-        rows.map(r=>'<tr>'+r.map(c=>'<td dir="auto">'+inl(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';continue}
-    const um=ln.match(/^(\s*)([-*+])\s+(.*)$/),om=ln.match(/^(\s*)(\d{1,3})[.)]\s+(.*)$/);
-    if(um||om){
-      flushP(pb);pb=[];const ord=!!om;const tag=ord?'ol':'ul';const c=[];
-      while(i<L.length){const m2=L[i].match(/^(\s*)([-*+]|\d{1,3}[.)])\s+(.*)$/);if(!m2)break;c.push(m2[3]);i++}
-      o+='<'+tag+'>'+c.map(x=>'<li dir="auto">'+inl(x)+'</li>').join('')+'</'+tag+'>';continue}
-    pb.push(ln.replace(/^\s{1,}/,''));i++;
+function extractData(md){
+  var text = String(md || "");
+
+  function grab(re){
+    var m = text.match(re);
+    if(!m) return [];
+
+    var uniq = {};
+    m.forEach(function(x){
+      x = cleanText(x);
+      if(x) uniq[x] = 1;
+    });
+
+    return Object.keys(uniq);
   }
-  flushP(pb);return o;
+
+  return {
+    emails: grab(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g),
+    urls: grab(/https?:\/\/[^\s)\]]+/g),
+    phones: grab(/(?:\+\d{1,3}[\s-]?)?(?:\d[\s-]?){8,14}\d/g),
+    money: grab(/\b\d{1,3}(?:[,\u066C]\d{3})*(?:\.\d+)?\s*(?:ريال|درهم|دينار|جنيه|USD|SAR|AED|EGP|\$|€|£)/g),
+    dates: grab(/\b\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b/g),
+    articles: grab(/(?:المادة|البند|الفقرة|Clause|Article|Section)\s*\d+[\d.\/-]*/gi)
+  };
 }
 
-/* =====================================================================
-   UI — QUEUE / FILES
-   ===================================================================== */
-function renderQueue(){
-  const q=$('#queue');
-  if(!S.files.length){q.innerHTML='<div class="empty">لا ملفات بعد.<br>اسحب PDF أو MD إلى اللوحة أعلاه.</div>'}
-  else q.innerHTML=S.files.map(f=>`
-    <div class="q-item" data-id="${f.id}">
-      <div class="q-ico ${f.kind==='md'?'md':''}">${f.kind==='md'?'MD':'PDF'}</div>
-      <div class="q-meta">
-        <b>${escH(f.name)}</b>
-        <span>${fmtBytes(f.size)}${f.pages?' · '+f.pages+'p':''}${f.err?' · '+f.err:''}</span>
-        ${f.status==='work'?`<div class="q-bar"><i style="width:${Math.round(f.progress*100)}%"></i></div>`:''}
-      </div>
-      <span class="q-st ${f.status}">${f.status==='work'?'WORK':f.status==='done'?'DONE':f.status==='err'?'FAIL':'QUEUED'}</span>
-      <button class="q-x" data-x="${f.id}" title="إزالة">×</button>
-    </div>`).join('');
-  $$('[data-x]',q).forEach(b=>b.onclick=e=>{e.stopPropagation();S.files=S.files.filter(x=>x.id!==b.dataset.x);renderQueue();leds()});
-  $$('.q-item',q).forEach(el=>el.onclick=()=>{const f=S.files.find(x=>x.id===el.dataset.id);
-    if(f&&f.result){applyResult(f.result);toast('تحديد','تم تحميل نتيجة '+f.name,'i')}});
-  leds();
+/* ---------- rendering ---------- */
+
+function renderDocs(){
+  var box = $("#docsList");
+
+  if(!state.docs.length){
+    box.innerHTML = '<p class="muted">لا ملفات بعد.</p>';
+    return;
+  }
+
+  box.innerHTML = state.docs.map(function(d){
+    return '<div class="doc ' + (d.id === state.currentId ? "active" : "") + '" data-doc="' + d.id + '">' +
+      '<div class="row between"><b>' + escapeHtml(d.name) + '</b><span class="badge">' + escapeHtml(d.type.toUpperCase()) + '</span></div>' +
+      '<div class="muted small">' +
+        fmtBytes(d.size) + ' · ' +
+        (d.stats ? d.stats.pages : "-") + ' صفحة · ' +
+        (d.stats ? d.stats.words : 0) + ' كلمة' +
+        (d.saved ? ' · محفوظ' : '') +
+      '</div>' +
+      '<div class="row" style="margin-top:7px">' +
+        '<button class="xs" data-action="openDoc" data-id="' + d.id + '">فتح</button>' +
+        '<button class="xs danger" data-action="deleteDoc" data-id="' + d.id + '">حذف</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
 }
-async function addFiles(list){
-  for(const file of list){
-    const ext=(file.name.split('.').pop()||'').toLowerCase();
-    const f={id:uid('f'),name:file.name,size:file.size,kind:['md','markdown','txt'].includes(ext)?'md':'pdf',
-      status:'queued',progress:0,result:null,err:null,buffer:null};
-    if(f.kind==='pdf'){
-      if(!/pdf/i.test(file.type)&&ext!=='pdf'){f.err='ليس PDF';f.status='err';S.files.push(f);renderQueue();continue}
-      f.buffer=await file.arrayBuffer();
-    }else{
-      const text=await file.text();
-      f.result={markdown:text,structure:buildStructure(text,[],{title:file.name,fileName:file.name,pagesCount:1,words:(text.match(/\S+/g)||[]).length,rtl:isRTL(text.slice(0,2000))}),
-        stats:{pages:1,words:(text.match(/\S+/g)||[]).length,chars:text.length,
-          headings:(text.match(/^#{1,6} /gm)||[]).length,tables:0,lists:(text.match(/^\s*[-*+] /gm)||[]).length,
-          paras:0,bodySize:0,columns:1,read:Math.max(1,Math.round((text.match(/\S+/g)||[]).length/220)),density:100},
-        warns:[],meta:{title:file.name,fileName:file.name},fileName:file.name};
-      f.status='done';f.pages=1;
+
+function renderCurrent(){
+  var d = getCurrentDoc();
+
+  $("#currentTitle").textContent = d ? d.name : "لا مستند محدد";
+  $("#currentMeta").textContent = d
+    ? (d.stats.words + " كلمة · " + fmtBytes(d.markdown.length) + " · " + d.stats.pages + " صفحة")
+    : "";
+
+  $("#mdEditor").value = d ? d.markdown : "";
+
+  renderPreview();
+  renderJson();
+  renderExtract();
+  renderSnippet();
+}
+
+function refreshViews(){
+  var d = getCurrentDoc();
+  if(!d) return;
+
+  $("#currentMeta").textContent =
+    d.stats.words + " كلمة · " +
+    fmtBytes(d.markdown.length) + " · " +
+    d.stats.pages + " صفحة";
+
+  renderPreview();
+  renderJson();
+  renderExtract();
+}
+
+function renderPreview(){
+  var d = getCurrentDoc();
+  $("#preview").innerHTML = d
+    ? renderMarkdownPreview(d.markdown)
+    : '<p class="muted">لا معاينة.</p>';
+}
+
+function renderJson(){
+  var d = getCurrentDoc();
+  $("#jsonView").textContent = d ? JSON.stringify(d.structure, null, 2) : "{}";
+}
+
+function renderExtract(){
+  var d = getCurrentDoc();
+  $("#extractView").textContent = d ? JSON.stringify(d.extracted, null, 2) : "{}";
+}
+
+function renderMarkdownPreview(md){
+  var lines = String(md || "").split("\n");
+  var out = [];
+  var para = [];
+  var list = [];
+  var listOrdered = false;
+  var inCode = false;
+  var codeBuf = [];
+
+  function flushPara(){
+    if(para.length){
+      out.push('<p dir="auto">' + inlineMd(escapeHtml(para.join(" "))) + '</p>');
+      para = [];
     }
-    S.files.push(f);log('ملف جديد: '+file.name+' ('+fmtBytes(file.size)+')','lg-i');
   }
-  renderQueue();
-  const mdOnly=S.files.filter(f=>f.kind==='md'&&f.status==='done'&&!S.cur);
-  if(mdOnly.length)applyResult(mdOnly[mdOnly.length-1].result);
-  if(S.files.some(f=>f.kind==='pdf'&&f.status==='queued'))runQueue();
-}
-async function runQueue(){
-  if(S.busy)return;S.busy=true;leds();
-  const pend=S.files.filter(f=>f.kind==='pdf'&&f.status==='queued');
-  for(const f of pend){
-    f.status='work';renderQueue();
-    const t0=performance.now();
-    try{
-      log('بدء استخراج '+f.name,'lg-w');
-      const res=await convertPdf(f,(p,i,n)=>{f.progress=p;prog(p*100);
-        const bar=$('.q-item[data-id="'+f.id+'"] .q-bar i');if(bar)bar.style.width=(p*100)+'%';
-        if(i%3===0||i===n)log('  صفحة '+i+'/'+n,'lg-t');});
-      f.result=res;f.status='done';f.pages=res.stats.pages;
-      const dt=Math.round(performance.now()-t0);
-      log('✓ '+f.name+' · '+res.stats.pages+' صفحة · '+res.stats.words+' كلمة · '+dt+'ms','lg-ok');
-      applyResult(res);
-      $('#hsPages').textContent=res.stats.pages;$('#hsBlocks').textContent=res.blocks.length;
-      $('#hsTime').innerHTML=dt+'<em style="font-size:.5em">ms</em>';
-      if(f.warns&&res.warns.length)res.warns.slice(0,4).forEach(w=>log('! '+w,'lg-w'));
-      const ep=selEp();
-      if(ep&&ep.autoPush){log('إرسال تلقائي إلى '+ep.name+'…','lg-w');await pushTo(ep,res)}
-    }catch(e){
-      f.status='err';f.err=(e&&e.message)||'خطأ';log('✗ '+f.name+' — '+f.err,'lg-e');
-      toast('فشل الاستخراج',f.err,'e');
+
+  function flushList(){
+    if(list.length){
+      var tag = listOrdered ? "ol" : "ul";
+      out.push(
+        "<" + tag + ">" +
+        list.map(function(x){
+          return '<li dir="auto">' + inlineMd(escapeHtml(x)) + "</li>";
+        }).join("") +
+        "</" + tag + ">"
+      );
+      list = [];
     }
-    prog(0);renderQueue();
   }
-  S.busy=false;leds();
-}
-function applyResult(res){
-  S.cur=res;
-  $('#mdRaw').value=res.markdown;
-  $('#outTitle').textContent=res.fileName||'لوحة الإخراج';
-  $('#outMeta').textContent=res.stats.pages+'P · '+res.stats.words+'W · '+fmtBytes(res.markdown.length);
-  const set=(id,v)=>{const el=$(id);if(el.textContent!=String(v))countTo(el,v)};
-  set('#sPages',res.stats.pages);set('#sWords',res.stats.words);set('#sChars',res.stats.chars||res.markdown.length);
-  set('#sHeads',res.stats.headings);set('#sTables',res.stats.tables);
-  $('#sRead').innerHTML=res.stats.read+'<em style="font-size:.5em;color:var(--amber)">د</em>';
-  paintPreview();paintJSON();paintExtract();paintTables();paintWarns();
-  $('#slabChip').textContent='DONE · '+res.stats.pages+'P';
-  leds();
-}
-function paintWarns(){
-  const r=S.cur;const w=(r&&r.warns)||[];
-  $('#warnSlot').innerHTML=w.length?`<div class="warnbox"><b>WARNINGS (${w.length})</b>${w.slice(0,6).map(x=>'• '+escH(x)).join('<br>')}</div>`:'';
-}
-function countTo(el,to){
-  const from=parseInt(String(el.textContent).replace(/\D/g,''))||0;const t0=performance.now();
-  (function step(){const k=Math.min(1,(performance.now()-t0)/450);
-    el.textContent=Math.round(from+(to-from)*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(step)})();
+
+  function flushCode(){
+    if(codeBuf.length){
+      out.push("<pre><code>" + escapeHtml(codeBuf.join("\n")) + "</code></pre>");
+      codeBuf = [];
+    }
+  }
+
+  for(var i = 0; i < lines.length; i++){
+    var raw = lines[i];
+
+    if(raw.indexOf("```") === 0){
+      flushPara();
+      flushList();
+      if(inCode){
+        flushCode();
+        inCode = false;
+      } else {
+        inCode = true;
+      }
+      continue;
+    }
+
+    if(inCode){
+      codeBuf.push(raw);
+      continue;
+    }
+
+    if(!raw.trim()){
+      flushPara();
+      flushList();
+      continue;
+    }
+
+    var h = raw.match(/^(#{1,6})\s+(.*)$/);
+    if(h){
+      flushPara();
+      flushList();
+      var lv = h[1].length;
+      out.push("<h" + lv + ' dir="auto">' + inlineMd(escapeHtml(h[2])) + "</h" + lv + ">");
+      continue;
+    }
+
+    if(/^(-{3,}|\*{3,}|_{3,})$/.test(raw.trim())){
+      flushPara();
+      flushList();
+      out.push("<hr>");
+      continue;
+    }
+
+    var bq = raw.match(/^>\s?(.*)$/);
+    if(bq){
+      flushPara();
+      flushList();
+      out.push('<blockquote dir="auto">' + inlineMd(escapeHtml(bq[1])) + "</blockquote>");
+      continue;
+    }
+
+    var li = raw.match(/^\s*([-*+]|\d+[.)])\s+(.*)$/);
+    if(li){
+      flushPara();
+      var ordered = /^\d/.test(li[1]);
+      if(list.length && ordered !== listOrdered) flushList();
+      listOrdered = ordered;
+      list.push(li[2]);
+      continue;
+    }
+
+    var pb = raw.match(/<!--\s*صفحة\s*(\d+)\s*-->/);
+    if(pb){
+      flushPara();
+      flushList();
+      out.push('<div class="pagebreak">صفحة ' + escapeHtml(pb[1]) + "</div>");
+      continue;
+    }
+
+    flushList();
+    para.push(raw);
+  }
+
+  flushPara();
+  flushList();
+  flushCode();
+
+  return out.join("\n") || '<p class="muted">فارغ.</p>';
 }
 
-/* ---------- panes ---------- */
-function paintPreview(){$('.pane[data-p="prev"]').innerHTML=S.cur?renderMD(stripFence(S.cur.markdown)):'<p style="color:#948d7f">لا مخرجات بعد.</p>'}
-function stripFence(md){return md.replace(/^---\n[\s\S]*?\n---\n?/,'')}
-function hl(t){return escH(t)
-  .replace(/("[^"]*")(\s*:)/g,'<span class="j-key">$1</span>$2')
-  .replace(/:\s("[^"]*")/g,': <span class="j-str">$1</span>')
-  .replace(/:\s(-?\d+(?:\.\d+)?)/g,': <span class="j-num">$1</span>')
-  .replace(/:\s(true|false)/g,': <span class="j-bool">$1</span>')
-  .replace(/:\snull/g,': <span class="j-null">null</span>')}
-function paintJSON(){
-  if(!S.cur){$('#jsonView').innerHTML='{ }';return}
-  const o={meta:S.cur.structure.meta,outline:S.cur.structure.outline,tables:S.cur.structure.tables,sections:S.cur.structure.sections};
-  $('#jsonView').innerHTML=hl(JSON.stringify(o,null,2));
-}
-function paintTables(){
-  const ts=(S.cur&&S.cur.structure.tables)||[];
-  $('#bxtCount').textContent=ts.length;
-  if(!ts.length){$('#tablesPane').innerHTML='<div class="empty">لم يُعثر على جداول في هذه النتيجة.</div>';return}
-  $('#tablesPane').innerHTML=ts.map((t,i)=>`
-    <div class="ttl-mini">TABLE ${i+1} · ${t.rows.length}×${t.head.length}</div>
-    <table class="tbl-x"><thead><tr>${t.head.map(h=>'<th>'+escH(h)+'</th>').join('')}</tr></thead>
-    <tbody>${t.rows.map(r=>'<tr>'+r.map(c=>'<td dir="auto">'+escH(c)+'</td>').join('')+'</tr>').join('')}</tbody></table>
-    <div style="height:16px"></div>`).join('');
+function inlineMd(s){
+  return String(s)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function(m, text, url){
+      return '<a href="' + safeUrl(url) + '" target="_blank" rel="noopener noreferrer">' + text + "</a>";
+    });
 }
 
-/* ---------- extraction rules ---------- */
-const PRESETS=[
- {name:'أرقام هواتف',pat:'(?:\\+\\d{1,3}[\\s-]?)?(?:\\d[\\s-]?){8,14}',flags:'g'},
- {name:'بريد إلكتروني',pat:'[\\w.+-]+@[\\w-]+\\.[\\w.]{2,}',flags:'gi'},
- {name:'روابط',pat:'https?://[^\\s)\\]]+',flags:'g'},
- {name:'مبالغ مالية',pat:'\\b\\d{1,3}(?:[,\\u066C]\\d{3})*(?:\\.\\d+)?\\s*(?:ريال|درهم|دينار|جنيه|USD|SAR|AED|EGP|\\$|€|£)',flags:'g'},
- {name:'تواريخ',pat:'\\b\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}\\b|\\b\\d{4}-\\d{2}-\\d{2}\\b',flags:'g'},
- {name:'أرقام بنود/مواد',pat:'(?:المادة|البند|الفقرة|Clause|Art\\.?|Section)\\s*\\d+[\\d./-]*',flags:'gi'},
- {name:'رموز المستندات',pat:'\\b[A-Z]{2,4}-\\d{3,6}\\b|\\b\\d{6,12}\\b',flags:'g'},
- {name:'النِّسَب',pat:'\\b\\d{1,3}(?:\\.\\d+)?\\s?%',flags:'g'}
-];
-function loadRules(){S.rules=store.get(LS.rules,null)||PRESETS.map(p=>({...p,on:['أرقام هواتف','بريد إلكتروني','مبالغ مالية','أرقام بنود/مواد'].includes(p.name)}))}
-function runRules(md){
-  const res=[];
-  S.rules.filter(r=>r.on).forEach(r=>{
-    let re;try{re=new RegExp(r.pat,r.flags||'g')}catch(e){res.push({rule:r,error:'نمط غير صالح',hits:[]});return}
-    const hits=[];let m,guard=0;
-    while((m=re.exec(md))&&guard++<4000){hits.push(m[0].trim());if(m.index===re.lastIndex)re.lastIndex++}
-    res.push({rule:r,hits:[...new Set(hits)]});
+function safeUrl(u){
+  u = String(u || "");
+  return /^(https?:|mailto:|#)/i.test(u) ? u : "#";
+}
+
+function renderEndpoints(){
+  var box = $("#endpointList");
+
+  if(!state.endpoints.length){
+    box.innerHTML = '<p class="muted">لا نقاط بعد. أضف رابط منصتك لتفعيل الإرسال/الجلب.</p>';
+    return;
+  }
+
+  box.innerHTML = state.endpoints.map(function(ep){
+    var st = ep._status || "";
+    return '<div class="endpoint ' + (ep.id === state.selectedEndpointId ? "active" : "") + '" data-ep="' + ep.id + '">' +
+      '<div class="row between">' +
+        '<b>' + escapeHtml(ep.name) + '</b>' +
+        '<span class="badge ' + escapeHtml(st) + '">' + escapeHtml(st || "idle") + '</span>' +
+      '</div>' +
+      '<div class="muted small ltr">' + escapeHtml(ep.url) + '</div>' +
+      '<div class="row" style="margin-top:7px">' +
+        '<button class="xs" data-action="selectEndpoint" data-id="' + ep.id + '">تحديد</button>' +
+        '<button class="xs" data-action="editEndpoint" data-id="' + ep.id + '">تعديل</button>' +
+        '<button class="xs danger" data-action="deleteEndpoint" data-id="' + ep.id + '">حذف</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+function renderSnippet(){
+  var ep = getSelectedEndpoint();
+  var lang = $("#snippetLang").value;
+  var url = ep && ep.url ? ep.url : "https://api.example.com/v1/documents";
+  var method = ep && ep.method ? ep.method : "POST";
+
+  var headers = Object.assign(
+    { "Content-Type": "application/json" },
+    ep ? parseHeaders(ep.headers) : {},
+    ep ? authHeaders(ep) : {}
+  );
+
+  var code = "";
+
+  if(lang === "curl"){
+    code = "curl -X " + method + " " + JSON.stringify(url);
+    Object.keys(headers).forEach(function(k){
+      code += " \\\n  -H " + JSON.stringify(k + ": " + headers[k]);
+    });
+    code += ' \\\n  --data-binary @payload.json\n\n';
+    code += '# payload.json: { "title": "...", "source": "...", "pages": 1, "markdown": "...", "extracted": {}, "outline": [] }';
+  } else if(lang === "js"){
+    code =
+      "const payload = {\n" +
+      "  title: 'وثيقة',\n" +
+      "  source: 'file.pdf',\n" +
+      "  pages: 1,\n" +
+      "  markdown: mdText,\n" +
+      "  extracted: {},\n" +
+      "  outline: []\n" +
+      "};\n\n" +
+      "const res = await fetch(" + JSON.stringify(url) + ", {\n" +
+      "  method: " + JSON.stringify(method) + ",\n" +
+      "  headers: " + JSON.stringify(headers, null, 2) + ",\n" +
+      "  body: JSON.stringify(payload)\n" +
+      "});\n\n" +
+      "const text = await res.text();\n" +
+      "console.log(res.status, text);";
+  } else {
+    code =
+      "import json, requests\n\n" +
+      "payload = {\n" +
+      "    'title': 'وثيقة',\n" +
+      "    'source': 'file.pdf',\n" +
+      "    'pages': 1,\n" +
+      "    'markdown': md_text,\n" +
+      "    'extracted': {},\n" +
+      "    'outline': []\n" +
+      "}\n" +
+      "headers = " + JSON.stringify(headers, null, 2) + "\n\n" +
+      "r = requests." + method.toLowerCase() + "(" + JSON.stringify(url) + ", json=payload, headers=headers)\n" +
+      "print(r.status_code, r.text)";
+  }
+
+  $("#snippet").textContent = code;
+}
+
+/* ---------- files/docs ---------- */
+
+function addDoc(doc, silent){
+  state.docs.unshift(doc);
+  state.currentId = doc.id;
+
+  renderDocs();
+  renderCurrent();
+
+  if(!silent) log("أُضيف مستند: " + doc.name, "ok");
+
+  var ep = getSelectedEndpoint();
+  if(ep && ep.autoPush && doc.type === "pdf"){
+    log("إرسال تلقائي إلى " + ep.name, "warn");
+    pushDoc(doc, ep);
+  }
+}
+
+function setCurrentDoc(id){
+  state.currentId = id;
+  renderDocs();
+  renderCurrent();
+}
+
+function deleteDoc(id){
+  state.docs = state.docs.filter(function(d){ return d.id !== id; });
+
+  if(state.currentId === id){
+    state.currentId = state.docs.length ? state.docs[0].id : null;
+  }
+
+  persistSavedDocs();
+  renderDocs();
+  renderCurrent();
+}
+
+async function handleFiles(fileList){
+  var files = Array.prototype.slice.call(fileList || []);
+  if(!files.length) return;
+
+  for(var i = 0; i < files.length; i++){
+    var file = files[i];
+
+    try {
+      if(/\.pdf$/i.test(file.name) || file.type === "application/pdf"){
+        log("بدء تحويل PDF: " + file.name, "info");
+        var doc = await convertPdf(file);
+        addDoc(doc);
+        toast("تم تحويل " + file.name, "ok");
+      } else if(/\.(md|markdown|txt)$/i.test(file.name) || /text\/(markdown|plain)/.test(file.type)){
+        var text = await file.text();
+        addDoc(makeDocFromMarkdown(file.name, text, "md", file.size, {}));
+        toast("تم فتح " + file.name, "ok");
+      } else {
+        toast("ملف غير مدعوم: " + file.name, "warn");
+      }
+    } catch(e){
+      log("فشل: " + file.name + " — " + e.message, "error");
+      toast("فشل: " + e.message, "error");
+    }
+  }
+}
+
+/* ---------- persistence saved docs ---------- */
+
+function persistSavedDocs(){
+  var saved = state.docs
+    .filter(function(d){ return d.saved; })
+    .slice(0, 10)
+    .map(function(d){
+      return {
+        id: d.id,
+        name: d.name,
+        markdown: d.markdown,
+        createdAt: d.createdAt,
+        saved: true
+      };
+    });
+
+  saveLS(STORAGE.savedDocs, saved);
+}
+
+function loadSavedDocs(){
+  var arr = loadLS(STORAGE.savedDocs, []);
+
+  return arr.map(function(d){
+    var doc = makeDocFromMarkdown(
+      d.name,
+      d.markdown,
+      "md",
+      new Blob([d.markdown]).size,
+      {}
+    );
+
+    doc.id = d.id || doc.id;
+    doc.createdAt = d.createdAt || doc.createdAt;
+    doc.saved = true;
+
+    return doc;
   });
-  return res;
 }
-function paintExtract(){
-  const md=S.cur?S.cur.markdown:'';const out=runRules(md);
-  const total=out.reduce((a,x)=>a+x.hits.length,0);
-  $('#bxCount').textContent=total;
-  $('#extractPane').innerHTML=`
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-      <button class="btn xs" data-act="all">تفعيل الكل</button>
-      <button class="btn xs" data-act="none">تعطيل الكل</button>
-      <button class="btn xs" data-act="add">＋ قاعدة مخصّصة</button>
-      <button class="btn xs mint" data-act="copy">⧉ نسخ JSON المستخرَج</button>
-    </div>
-    ${out.map((o,i)=>`
-      <div class="rule">
-        <div class="sw ${o.rule.on?'on':''}" data-toggle="${i}" style="padding:0"><i></i></div>
-        <b>${escH(o.rule.name)}</b><code dir="ltr">${escH(o.rule.pat).slice(0,44)}</code>
-        <span class="n">${o.error?'!':o.hits.length}</span>
-        <button class="btn xs gh" data-del="${i}">×</button>
-      </div>
-      ${o.error?'<div class="warnbox" style="margin:-2px 0 8px">خطأ في التعبير النمطي.</div>':
-        (o.rule.on&&o.hits.length?`<div style="margin:-2px 0 9px;font-family:var(--ff-m);font-size:11px;color:var(--tx2);direction:ltr;text-align:start;word-break:break-word">${o.hits.slice(0,14).map(h=>'<span class="tagx" style="display:inline-block;margin:2px">'+escH(h)+'</span>').join('')}${o.hits.length>14?' <span class="tagx">+'+(o.hits.length-14)+'</span>':''}</div>`:'')}
-    `).join('')}
-    <div class="ttl-mini" style="margin-top:14px">JSON جاهز للاستهلاك</div>
-    <div class="resp" style="max-height:230px">${hl(JSON.stringify(extractedJSON(out),null,2))}</div>`;
-  $$('#extractPane [data-toggle]').forEach(el=>el.onclick=()=>{const i=+el.dataset.toggle;
-    S.rules[i].on=!S.rules[i].on;store.set(LS.rules,S.rules);paintExtract()});
-  $$('#extractPane [data-del]').forEach(el=>el.onclick=()=>{S.rules.splice(+el.dataset.del,1);store.set(LS.rules,S.rules);paintExtract()});
-  $$('#extractPane [data-act]').forEach(el=>el.onclick=()=>{
-    const a=el.dataset.act;
-    if(a==='all'){S.rules.forEach(r=>r.on=true)}
-    else if(a==='none'){S.rules.forEach(r=>r.on=false)}
-    else if(a==='add'){const n=prompt('اسم القاعدة:');if(!n)return;const p=prompt('التعبير النمطي (Regex):');if(!p)return;
-      S.rules.push({name:n,pat:p,flags:'g',on:true})}
-    else if(a==='copy'){copy(JSON.stringify(extractedJSON(out),null,2),'تم نسخ JSON المستخرَج')}
-    store.set(LS.rules,S.rules);paintExtract();
+
+/* ---------- endpoints ---------- */
+
+function persistEndpoints(){
+  saveLS(STORAGE.endpoints, state.endpoints);
+}
+
+function parseHeaders(text){
+  var obj = {};
+
+  String(text || "").split("\n").forEach(function(line){
+    var idx = line.indexOf(":");
+    if(idx > 0){
+      var k = line.slice(0, idx).trim();
+      var v = line.slice(idx + 1).trim();
+      if(k) obj[k] = v;
+    }
   });
-}
-function extractedJSON(out){
-  const o={};out.forEach(x=>{if(x.rule.on)o[x.rule.name]=x.hits});
-  return {extractedAt:new Date().toISOString(),source:S.cur?S.cur.fileName:null,counts:Object.fromEntries(out.map(x=>[x.rule.name,x.error?null:x.hits.length])),data:o};
+
+  return obj;
 }
 
-/* =====================================================================
-   TABS
-   ===================================================================== */
-function moveInd(){const t=$('.tab.on');const ind=$('#tabInd');if(!t)return;
-  ind.style.width=t.offsetWidth+'px';ind.style.right=t.offsetLeft+'px'}
-$$('#tabs .tab').forEach(t=>t.onclick=()=>{
-  $$('#tabs .tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');
-  $$('.pane').forEach(p=>p.classList.toggle('on',p.dataset.p===t.dataset.p));moveInd();
-});
-$('#mdRaw').addEventListener('input',()=>{
-  if(!S.cur)return;S.cur.markdown=$('#mdRaw').value;
-  clearTimeout(window.__pt);window.__pt=setTimeout(()=>{paintPreview();paintJSON();paintExtract();updateSize()},220);
-});
+function authHeaders(ep){
+  var h = {};
+  var token = String(ep && ep.token || "").trim();
 
-/* =====================================================================
-   ENDPOINTS
-   ===================================================================== */
-function blankEp(){return{id:uid('ep'),name:'',url:'',method:'POST',mode:'json',field:'markdown',auth:'none',token:'',
-  headers:'',pullPath:'',proxy:'',autoPush:false,sendStructure:true}}
-function selEp(){return S.eps.find(e=>e.id===S.selEp)||null}
-function hdrs(ep){const o={};(ep.headers||'').split('\n').forEach(l=>{const i=l.indexOf(':');if(i>0)o[l.slice(0,i).trim()]=l.slice(i+1].trim?l.slice(i+1).trim():l.slice(i+1).trim()});return o}
-function parseHeaders(str){const o={};String(str||'').split('\n').forEach(l=>{const i=l.indexOf(':');if(i>0){const k=l.slice(0,i).trim();if(k)o[k]=l.slice(i+1).trim()}});return o}
-function targetUrl(ep){return ep.proxy?(/^https?:\/\//.test(ep.proxy)&&/[?=&]$/.test(ep.proxy)?ep.proxy+encodeURIComponent(ep.url):ep.proxy):ep.url}
-function authHdrs(ep){
-  const h={};const tk=(ep.token||'').trim();
-  if(ep.auth==='bearer'&&tk)h.Authorization='Bearer '+tk;
-  else if(ep.auth==='apikey'&&tk)h['X-API-Key']=tk;
-  else if(ep.auth==='basic'&&tk)h.Authorization='Basic '+btoa(tk.includes(':')?tk:tk+':');
+  if(!token) return h;
+
+  if(ep.auth === "bearer"){
+    h.Authorization = "Bearer " + token;
+  } else if(ep.auth === "header"){
+    h["X-API-Key"] = token;
+  } else if(ep.auth === "basic"){
+    try {
+      h.Authorization = "Basic " + btoa(token.indexOf(":") >= 0 ? token : token + ":");
+    } catch(e){
+      h.Authorization = "Basic " + token;
+    }
+  }
+
   return h;
 }
-function buildPayload(res,ep){
-  return {
-    title:res.meta.title||res.fileName,
-    source:res.fileName||'',
-    mimeType:'text/markdown',
-    convertedAt:new Date().toISOString(),
-    pages:res.stats.pages,words:res.stats.words,
-    lang:res.meta.rtl?'ar':'und',
-    [ep&&ep.field||'markdown']:res.markdown,
-    structure:ep&&ep.sendStructure?{meta:res.structure.meta,outline:res.structure.outline,tables:res.structure.tables}:undefined,
-    extracted:extractedJSON(runRules(res.markdown)).data,
-    warnings:res.warns||[],
-    tags:['pdf2md','sanad']
+
+function openEndpointForm(ep){
+  $("#endpointForm").hidden = false;
+
+  $("#epEditingId").value = ep && ep.id ? ep.id : "";
+  $("#epName").value = ep && ep.name ? ep.name : "";
+  $("#epUrl").value = ep && ep.url ? ep.url : "";
+  $("#epMethod").value = ep && ep.method ? ep.method : "POST";
+  $("#epMode").value = ep && ep.mode ? ep.mode : "json";
+  $("#epField").value = ep && ep.field ? ep.field : "markdown";
+  $("#epAuth").value = ep && ep.auth ? ep.auth : "none";
+  $("#epToken").value = ep && ep.token ? ep.token : "";
+  $("#epHeaders").value = ep && ep.headers ? ep.headers : "";
+  $("#epPullPath").value = ep && ep.pullPath ? ep.pullPath : "";
+  $("#epAuto").checked = !!(ep && ep.autoPush);
+}
+
+function closeEndpointForm(){
+  $("#endpointForm").hidden = true;
+  $("#epEditingId").value = "";
+}
+
+function saveEndpointFromForm(){
+  var id = $("#epEditingId").value;
+  var old = null;
+
+  for(var i = 0; i < state.endpoints.length; i++){
+    if(state.endpoints[i].id === id) old = state.endpoints[i];
+  }
+
+  var ep = {
+    id: id || uid("ep"),
+    name: $("#epName").value.trim() || "نقطة نهاية",
+    url: $("#epUrl").value.trim(),
+    method: $("#epMethod").value,
+    mode: $("#epMode").value,
+    field: $("#epField").value.trim() || "markdown",
+    auth: $("#epAuth").value,
+    token: $("#epToken").value,
+    headers: $("#epHeaders").value,
+    pullPath: $("#epPullPath").value.trim(),
+    autoPush: $("#epAuto").checked,
+    _status: old ? old._status : ""
   };
+
+  if(!/^https?:\/\//i.test(ep.url)){
+    toast("الرابط يجب أن يبدأ بـ http أو https", "warn");
+    return;
+  }
+
+  if(id){
+    state.endpoints = state.endpoints.map(function(x){
+      return x.id === id ? ep : x;
+    });
+  } else {
+    state.endpoints.push(ep);
+    state.selectedEndpointId = ep.id;
+  }
+
+  persistEndpoints();
+  renderEndpoints();
+  renderSnippet();
+  closeEndpointForm();
+
+  toast("تم حفظ نقطة النهاية", "ok");
 }
-function prune(o){return JSON.parse(JSON.stringify(o))}
-function renderEps(){
-  const l=$('#epList');
-  if(!S.eps.length)l.innerHTML='<div class="empty">لا نقاط نهاية.<br>أضف رابط منصتك لتفعيل الإرسال/الجلب.</div>';
-  else l.innerHTML=S.eps.map(e=>`
-    <div class="ep ${e.id===S.selEp?'sel':''}" data-id="${e.id}">
-      <div class="ep-top"><span class="ep-dot ${e._ok===true?'ok':e._ok===false?'bad':''}"></span>
-        <b>${escH(e.name||'بدون اسم')}</b>
-        <span style="margin-inline-start:auto;font-family:var(--ff-m);font-size:9px;color:var(--tx3)">${e.method}</span></div>
-      <div class="ep-url" dir="ltr">${escH(e.url)}</div>
-      <div class="ep-tags">
-        <span class="tagx">${e.mode}</span><span class="tagx">${e.auth}</span>
-        ${e.autoPush?'<span class="tagx auto">AUTO-PUSH</span>':''}
-        <button class="btn xs gh" data-edit="${e.id}" style="margin-inline-start:auto">تعديل</button>
-        <button class="btn xs gh" data-del="${e.id}">×</button>
-      </div>
-    </div>`).join('');
-  $$('.ep',l).forEach(el=>el.onclick=ev=>{
-    if(ev.target.dataset.edit||ev.target.dataset.del)return;
-    S.selEp=el.dataset.id;store.set(LS.eps,S.eps);renderEps();syncPushView();leds()});
-  $$('[data-edit]',l).forEach(b=>b.onclick=()=>openEp(b.dataset.edit));
-  $$('[data-del]',l).forEach(b=>b.onclick=()=>{S.eps=S.eps.filter(x=>x.id!==b.dataset.del);
-    if(S.selEp===b.dataset.del)S.selEp=S.eps[0]?S.eps[0].id:null;store.set(LS.eps,S.eps);renderEps();syncPushView();leds()});
-  const opts=S.eps.map(e=>`<option value="${e.id}">${escH(e.name)}</option>`).join('');
-  $('#pullEp').innerHTML='<option value="">— مباشر —</option>'+opts;
-  $('#ocrEp').innerHTML='<option value="">— غير مفعّل —</option>'+opts;
-  $('#epCount').textContent=S.eps.length;
+
+function selectEndpoint(id){
+  state.selectedEndpointId = id;
+  persistEndpoints();
+  renderEndpoints();
+  renderSnippet();
 }
-function syncPushView(){
-  const ep=selEp();const r=S.cur;
-  $('#pvMethod').textContent=ep?ep.method:'—';
-  $('#pvMode').textContent=ep?(ep.mode==='json'?'JSON body':'multipart .md'):'—';
-  $('#pvField').textContent=ep?ep.field:'—';
-  $('#pvSize').textContent=r?fmtBytes(new Blob([JSON.stringify(buildPayload(r,ep))]).size):'—';
+
+function deleteEndpoint(id){
+  state.endpoints = state.endpoints.filter(function(e){ return e.id !== id; });
+
+  if(state.selectedEndpointId === id){
+    state.selectedEndpointId = state.endpoints.length ? state.endpoints[0].id : null;
+  }
+
+  persistEndpoints();
+  renderEndpoints();
+  renderSnippet();
 }
-/* modal */
-let editing=null;
-function openEp(id){
-  editing=id?JSON.parse(JSON.stringify(S.eps.find(e=>e.id===id))):blankEp();
-  $('#epmTitle').textContent=id?'تعديل نقطة نهاية':'نقطة نهاية جديدة';
-  $('#epName').value=editing.name;$('#epUrl').value=editing.url;$('#epMethod').value=editing.method;
-  $('#epMode').value=editing.mode;$('#epField').value=editing.field;$('#epAuth').value=editing.auth;
-  $('#epToken').value=editing.token;$('#epHeaders').value=editing.headers;$('#epPullPath').value=editing.pullPath;
-  $('#epProxy').value=editing.proxy;
-  $('#epAutoWrap').classList.toggle('on',!!editing.autoPush);
-  $('#epSendStruct').classList.toggle('on',!!editing.sendStructure);
-  $('#epModal').classList.add('on');
+
+function buildPayload(doc, ep){
+  var field = ep && ep.field ? ep.field : "markdown";
+
+  var payload = {
+    title: doc.structure && doc.structure.meta ? doc.structure.meta.title : doc.name,
+    source: doc.name,
+    mimeType: "text/markdown",
+    convertedAt: doc.createdAt,
+    pages: doc.stats.pages,
+    words: doc.stats.words,
+    extracted: doc.extracted || {},
+    outline: doc.structure && doc.structure.outline ? doc.structure.outline : []
+  };
+
+  payload[field] = doc.markdown;
+
+  return payload;
 }
-$('#btnAddEp').onclick=()=>openEp(null);
-$('#epmClose').onclick=$('#epmCancel').onclick=()=>$('#epModal').classList.remove('on');
-$('#epModal').onclick=e=>{if(e.target.id==='epModal')$('#epModal').classList.remove('on')};
-$$('#epModal .sw').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
-$('#epmSave').onclick=()=>{
-  const e=editing;e.name=$('#epName').value.trim()||'نقطة غير مسماة';e.url=$('#epUrl').value.trim();
-  e.method=$('#epMethod').value;e.mode=$('#epMode').value;e.field=$('#epField').value.trim()||'markdown';
-  e.auth=$('#epAuth').value;e.token=$('#epToken').value;e.headers=$('#epHeaders').value;
-  e.pullPath=$('#epPullPath').value.trim();e.proxy=$('#epProxy').value.trim();
-  e.autoPush=$('#epAutoWrap').classList.contains('on');e.sendStructure=$('#epSendStruct').classList.contains('on');
-  if(!/^https?:\/\//.test(e.url)){toast('رابط غير صالح','يجب أن يبدأ بـ http:// أو https://','w');return}
-  if(editing.id){S.eps=S.eps.map(x=>x.id===e.id?e:x)}else{S.eps.push(e);S.selEp=e.id}
-  store.set(LS.eps,S.eps);$('#epModal').classList.remove('on');renderEps();syncPushView();leds();
-  log('نقطة محفوظة: '+e.name+' → '+e.url,'lg-ok');toast('تم الحفظ',e.name,'i');
-};
-/* ping / push / pull */
-async function doFetch(url,init){
-  const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),25000);init.signal=ctl.signal;
-  try{const t0=performance.now();const r=await fetch(url,init);clearTimeout(to);
-    return{res:r,ms:Math.round(performance.now()-t0)}}catch(e){clearTimeout(to);throw e}
+
+function showApiResponse(title, body){
+  $("#apiResponse").textContent = title + "\n\n" + String(body || "").slice(0, 5000);
 }
-async function ping(ep){
-  if(!ep)return toast('لا نقطة','اختر نقطة نهاية أولًا','w');
-  const dot=$('.ep[data-id="'+ep.id+'"] .ep-dot');if(dot)dot.className='ep-dot wait';
-  log('PING '+ep.url,'lg-w');
-  try{
-    const {res,ms}=await doFetch(targetUrl(ep),{method:ep.method==='GET'?'GET':'POST',
-      headers:{'Content-Type':'application/json',...parseHeaders(ep.headers),...authHdrs(ep),'X-Sanad-Ping':'1'},
-      body:ep.method==='GET'?undefined:JSON.stringify({ping:true,at:new Date().toISOString()})});
-    ep._ok=res.ok||res.status<500;store.set(LS.eps,S.eps);
-    log('← '+res.status+' '+ (res.statusText||'')+' · '+ms+'ms',ep._ok?'lg-ok':'lg-e');
-    if(dot)dot.className='ep-dot '+(ep._ok?'ok':'bad');
-    $('#pushResp').style.display='block';
-    $('#pushResp').innerHTML='<span class="'+(ep._ok?'ok':'bad')+'">HTTP '+res.status+' · '+ms+'ms</span>\n'+escH((await res.text()).slice(0,600));
-    leds();return{ok:ep._ok,ms};
-  }catch(e){
-    ep._ok=false;const msg=(e.name==='AbortError')?'انتهت المهلة (25ث)':String(e.message||e);
-    log('✗ اتصال: '+msg,'lg-e');
-    if(dot)dot.className='ep-dot bad';
-    $('#pushResp').style.display='block';
-    $('#pushResp').innerHTML='<span class="bad">FAILED · '+escH(msg)+'</span>\n\n'+
-      'غالبًا السبب سياسة CORS أو عدم استجابة المضيف. الحلول:\n'+
-      '1) على الخادم: Access-Control-Allow-Origin + Allow-Headers: Content-Type, Authorization, X-Sanad-Ping\n'+
-      '2) أو ضع بادئة وكيل في حقل Proxy بنقطة النهاية.';
-    leds();toast('تعذّر الاتصال',msg,'e');return{ok:false};
+
+async function fetchWithTimeout(url, init, ms){
+  var controller = new AbortController();
+  var timer = setTimeout(function(){ controller.abort(); }, ms || 30000);
+
+  init = init || {};
+  init.signal = controller.signal;
+
+  try {
+    var res = await fetch(url, init);
+    clearTimeout(timer);
+    return res;
+  } catch(e){
+    clearTimeout(timer);
+    throw e;
   }
 }
-async function pushTo(ep,res){
-  if(!ep||!res)return toast('لا يوجد ما يُرسَل','حوّل ملفًا أو اختر نقطة نهاية','w'),null;
-  log('دفع إلى '+ep.name+' …','lg-w');
-  const payload=prune(buildPayload(res,ep));
-  try{
-    let init;
-    if(ep.mode==='form'){
-      const fd=new FormData();
-      fd.append('file',new Blob([res.markdown],{type:'text/markdown'}),(res.fileName||'doc').replace(/\.pdf$/i,'')+'.md');
-      fd.append('title',payload.title);fd.append('source',payload.source);fd.append('pages',String(payload.pages));
-      if(ep.sendStructure)fd.append('structure',JSON.stringify({meta:payload.structure&&res.structure.meta,outline:res.structure.outline}));
-      fd.append('extracted',JSON.stringify(payload.extracted));
-      init={method:ep.method,body:fd,headers:{...parseHeaders(ep.headers),...authHdrs(ep)}};
-    }else{
-      init={method:ep.method,headers:{'Content-Type':'application/json',...parseHeaders(ep.headers),...authHdrs(ep)},
-        body:JSON.stringify(payload)};
+
+async function pushDoc(doc, ep){
+  if(!doc){
+    toast("لا يوجد مستند للإرسال", "warn");
+    return;
+  }
+
+  if(!ep){
+    toast("أضف نقطة نهاية أولًا", "warn");
+    openEndpointForm(null);
+    return;
+  }
+
+  ep._status = "wait";
+  renderEndpoints();
+  showApiResponse("جارٍ الإرسال إلى " + ep.name + " ...", "");
+
+  try {
+    var payload = buildPayload(doc, ep);
+    var init;
+
+    if(ep.mode === "form"){
+      var fd = new FormData();
+      var baseName = String(doc.name || "document").replace(/\.[^.]+$/, "");
+
+      fd.append(
+        ep.field || "file",
+        new Blob([doc.markdown], { type: "text/markdown" }),
+        baseName + ".md"
+      );
+
+      fd.append("title", payload.title);
+      fd.append("source", payload.source);
+      fd.append("pages", String(payload.pages));
+      fd.append("words", String(payload.words));
+      fd.append("extracted", JSON.stringify(payload.extracted));
+      fd.append("outline", JSON.stringify(payload.outline));
+
+      init = {
+        method: ep.method || "POST",
+        body: fd,
+        headers: Object.assign({}, parseHeaders(ep.headers), authHeaders(ep))
+      };
+    } else {
+      init = {
+        method: ep.method || "POST",
+        headers: Object.assign(
+          { "Content-Type": "application/json" },
+          parseHeaders(ep.headers),
+          authHeaders(ep)
+        ),
+        body: JSON.stringify(payload)
+      };
     }
-    const {res:r,ms}=await doFetch(targetUrl(ep),init);
-    const txt=await r.text();let j=null;try{j=JSON.parse(txt)}catch(e){}
-    $('#pushResp').style.display='block';
-    $('#pushResp').innerHTML='<span class="'+(r.ok?'ok':'bad')+'">HTTP '+r.status+' · '+ms+'ms · '+fmtBytes(new Blob([JSON.stringify(payload)]).size)+'</span>\n'+escH(txt.slice(0,900));
-    if(r.ok){ep._ok=true;store.set(LS.eps,S.eps);
-      log('✓ تم الاستلام'+(j&&j.id?' · id='+j.id:''),'lg-ok');
-      toast('أُرسل بنجاح',(j&&j.id?('المعرّف: '+j.id):ep.name),'i');
-    }else{ep._ok=false;log('✗ رفض الخادم '+r.status,'lg-e');toast('رفض الخادم','HTTP '+r.status,'e')}
-    leds();renderEps();return{ok:r.ok,body:j};
-  }catch(e){
-    ep._ok=false;log('✗ فشل الدفع: '+e.message,'lg-e');toast('فشل الإرسال',String(e.message||e),'e');leds();renderEps();return null;
+
+    var res = await fetchWithTimeout(ep.url, init, 30000);
+    var text = await res.text();
+
+    ep._status = res.ok ? "ok" : "bad";
+    persistEndpoints();
+    renderEndpoints();
+
+    showApiResponse("HTTP " + res.status + " · " + ep.name, text || "(بدون رد نصي)");
+
+    if(res.ok){
+      toast("تم الإرسال بنجاح", "ok");
+      log("نجح الإرسال إلى " + ep.name, "ok");
+    } else {
+      toast("الخادم رد بخطأ " + res.status, "error");
+      log("فشل الإرسال HTTP " + res.status, "error");
+    }
+
+    return { ok: res.ok, text: text };
+  } catch(e){
+    ep._status = "bad";
+    persistEndpoints();
+    renderEndpoints();
+
+    var msg = e.name === "AbortError" ? "انتهت مهلة الاتصال" : e.message;
+
+    showApiResponse(
+      "ERROR · " + ep.name,
+      msg + "\n\nإذا كان الخطأ CORS: فعّل Access-Control-Allow-Origin على الخادم، أو استخدم بروكسي/خادم وسيط."
+    );
+
+    toast("فشل الإرسال: " + msg, "error");
+    log("فشل الإرسال: " + msg, "error");
   }
 }
-function dig(obj,path){return String(path||'').split('.').filter(Boolean).reduce((a,k)=>(a==null?a:(k in a?a[k]:/^\d+$/.test(k)?a[+k]:undefined)),obj)}
-async function pull(){
-  let url=$('#pullUrl').value.trim();const epId=$('#pullEp').value;const ep=S.eps.find(e=>e.id===epId);
-  let path=$('#pullPath').value.trim();
-  if(!url&&ep){url=ep.url;path=path||ep.pullPath}
-  if(!/^https?:\/\//.test(url)){toast('رابط غير صالح','أدخل URL يبدأ بـ http','w');return}
-  log('جلب من '+url,'lg-w');
-  try{
-    const {res,ms}=await doFetch(url,{method:'GET',headers:{Accept:'text/markdown,application/json,text/plain,...'}});
-    const txt=await res.text();let md=txt,label=url.split('/').pop()||'remote.md';
-    try{
-      const j=JSON.parse(txt);const got=path?dig(j,path):(j.markdown||j.data&&(j.data.markdown||j.data.attributes&&j.data.attributes.markdown)||j.content);
-      if(typeof got==='string'){md=got;label=(j.title||j.data&&j.data.id||label)+'.md'}
-    }catch(e){}
-    const st=buildStructure(md,[],{title:label,fileName:label,pagesCount:1,words:(md.match(/\S+/g)||[]).length,rtl:isRTL(md.slice(0,2000))});
-    const r={markdown:md,structure:st,blocks:[],warns:[],meta:st.meta,fileName:label,
-      stats:{pages:1,words:(md.match(/\S+/g)||[]).length,chars:md.length,headings:(md.match(/^#{1,6} /gm)||[]).length,
-        tables:st.tables.length,lists:(md.match(/^\s*[-*+] /gm)||[]).length,paras:0,bodySize:0,columns:1,
-        read:Math.max(1,Math.round((md.match(/\S+/g)||[]).length/220)),density:100}};
-    S.files.push({id:uid('f'),name:label,size:md.length,kind:'md',status:'done',progress:1,result:r,pages:1});
-    applyResult(r);renderQueue();
-    log('✓ جُلِب '+fmtBytes(md.length)+' · '+ms+'ms','lg-ok');toast('تم الجلب',label+' — '+fmtBytes(md.length),'i');
-  }catch(e){log('✗ جلب: '+e.message,'lg-e');toast('فشل الجلب',String(e.message||e)+' — تحقق من CORS','e')}
-}
 
-/* ---------- snippets ---------- */
-function snip(){
-  const ep=selEp();const url=ep?ep.url:'https://api.your-platform.test/v1/documents';
-  const auth=ep&&ep.auth==='bearer'?'\\\n  -H "Authorization: Bearer '"+'"'+(ep.token||'$TOKEN')+'"'+":"'\\'":'';
-  const tk=ep&&ep.token?ep.token:'$TOKEN';
-  const H=[];if(ep&&ep.auth==='bearer')H.push('Authorization: Bearer '+tk);
-  if(ep&&ep.auth==='apikey')H.push('X-API-Key: '+tk);
-  Object.keys(parseHeaders(ep&&ep.headers)).forEach(k=>H.push(k+': '+(ep.headers.split(k+':')[1]||'').split('\n')[0].trim()));
-  const L={
-   curl:[
-    'curl -X '+(ep?ep.method:'POST')+' "'+url+'" \\',
-    '  -H "Content-Type: application/json" \\',
-    ...H.map(h=>'  -H "'+h+'" \\'),
-    '  -d @payload.json','','# payload.json = { title, source, pages, markdown, structure, extracted }'],
-   js:[
-    'const payload = {',
-    '  title: "عنوان المستند",',
-    '  source: "report.pdf",',
-    '  pages: 12,',
-    '  markdown: mdString,          // نص Markdown',
-    '  structure: { meta, outline, tables },',
-    '  extracted: { "أرقام هواتف": ["+9665..."] }',
-    '};','',
-    'const res = await fetch("'+url+'", {',
-    '  method: "'+(ep?ep.method:'POST')+'",',
-    '  headers: { "Content-Type": "application/json"'+(H.length?',\n    '+JSON.stringify(Object.fromEntries(H.map(h=>h.split(/:\s*/))).slice(1,-1).replace(/"/g,'"')):'' )+' },',
-    '  body: JSON.stringify(payload)',
-    '});',
-    'const out = await res.json();   // { ok: true, id: "doc_123" }','','// ثم الجلب لاحقًا كنص خام:',
-    '// const md = await (await fetch("'+url.replace(/\/v\d+\/documents.?$/,'/v1/documents/')+'"+out.id+".md")).text();'],
-   node:[
-    'const fs = require("fs");',
-    'const markdown = fs.readFileSync("doc.md","utf8");','',
-    'fetch("'+url+'", {',
-    '  method: "'+(ep?ep.method:'POST')+'",',
-    '  headers: new Headers({ "Content-Type": "application/json"'+(H.length?', '+JSON.stringify(Object.fromEntries(H.map(h=>[h.split(/:\s*/)[0],h.split(/:\s*/).slice(1).join(": ")]))):'' )+' }),',
-    '  body: JSON.stringify({ title: "doc", source: "doc.pdf", markdown })',
-    '}).then(r => r.json()).then(console.log);'],
-   py:[
-    'import json, requests','',
-    'payload = {',
-    '    "title": "عنوان المستند",',
-    '    "source": "report.pdf",',
-    '    "markdown": open("doc.md", encoding="utf-8").read(),',
-    '}',
-    'headers = {"Content-Type": "application/json"'+(H.length?', '+JSON.stringify(Object.fromEntries(H.map(h=>[h.split(/:\s*/)[0],h.split(/:\s*/).slice(1).join(": ")]))):'' )+'}',
-    'r = requests.'+(ep?ep.method.toLowerCase():'post')+'("'+url+'", json=payload, headers=headers)',
-    'print(r.status_code, r.json())'],
-   php:[
-    '<?php',
-    '$md = file_get_contents("doc.md");',
-    '$ch = curl_init("'+url+'");',
-    'curl_setopt_array($ch, [',
-    '  CURLOPT_CUSTOMREQUEST => "'+(ep?ep.method:'POST')+'",',
-    '  CURLOPT_RETURNTRANSFER => true,',
-    '  CURLOPT_POSTFIELDS => json_encode(["title"=>"doc","source"=>"doc.pdf","markdown"=>$md]),',
-    '  CURLOPT_HTTPHEADER => array_merge(["Content-Type: application/json"]'+(H.length?', '.concat(JSON.stringify(H)):'')+' ),',
-    ']);',
-    '$res = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);',
-    'echo $code, "\\n", $res;'],
-   express:[
-    '// طرف المنصة القائمة: استقبال + جلب',
-    'app.post("/v1/documents", express.json({ limit: "12mb" }), async (req, res) => {',
-    '  const { title, source, pages, markdown, structure, extracted } = req.body;',
-    '  const doc = await DB.docs.insert({ title, source, pages, markdown, structure, extracted });',
-    '  res.json({ ok: true, id: doc.id, md: `/v1/documents/${doc.id}.md` });',
-    '});','',
-    'app.get("/v1/documents/:id.md", async (req, res) => {',
-    '  const doc = await DB.docs.get(req.params.id);',
-    '  res.setHeader("Content-Type", "text/markdown; charset=utf-8");',
-    '  res.setHeader("Access-Control-Allow-Origin", "*");',
-    '  res.send(doc.markdown);',
-    '});','',
-    'app.get("/v1/documents/:id.json", async (req, res) => {',
-    '  const doc = await DB.docs.get(req.params.id);',
-    '  res.json({ ok: true, data: { attributes: { markdown: doc.markdown, structure: doc.structure, extracted: doc.extracted } } });',
-    '});']
-  };
-  return (L[$('#snipLang').value]||[]).join('\n');
-}
-function paintSnip(){const s=snip();$('#snipOut').textContent=s;window.__snip=s}
-
-/* ---------- contract panes ---------- */
-function paintContract(){
-  $('#ctReq').textContent=JSON.stringify({
-    title:"لائحة الخدمات المالية",source:"report.pdf",mimeType:"text/markdown",
-    convertedAt:new Date().toISOString(),pages:12,words:5310,lang:"ar",
-    markdown:"# اللائحة\n\n## الباب الأول\n- مادة 1: ...",
-    structure:{meta:{},outline:[{level:1,title:"الباب الأول",words:420,tables:1}],tables:[{head:["البند","القيمة"],rows:[["الإجمالي","1,250 ريال"]]}]},
-    extracted:{"أرقام بنود/مواد":["المادة 12"],"مبالغ مالية":["1,250 ريال"]},
-    warnings:[],tags:["pdf2md","sanad"]},null,2);
-  $('#ctRes').textContent=JSON.stringify({ok:true,id:"doc_8f21ac",
-    md:"https://api.platform.test/v1/documents/doc_8f21ac.md",
-    json:"https://api.platform.test/v1/documents/doc_8f21ac.json",
-    bytes:48213,createdAt:new Date().toISOString()},null,2);
-  $('#ctGet').textContent=
-'GET /v1/documents/doc_8f21ac.md\nAccept: text/markdown\n\n→ 200  Content-Type: text/markdown; charset=utf-8\n  Access-Control-Allow-Origin: *\n  ETag: "8f21ac"\n\n# اللائحة\n\n## الباب الأول\n...\n\n'+
-'GET /v1/documents/doc_8f21ac.json\n\n→ 200 { "ok": true, "data": { "attributes": { "markdown": "...", "structure": {...}, "extracted": {...} } } }\n\n'+
-'# في سَنَد: املأ «جلب → الرابط» ثم حدّد مسار الحقل data.attributes.markdown';
-}
-
-/* ---------- library ---------- */
-function saveLib(){
-  if(!S.cur)return toast('لا نتيجة','حوّل ملفًا أولًا','w');
-  const rec={id:uid('d'),title:S.cur.meta.title||S.cur.fileName,source:S.cur.fileName,pages:S.cur.stats.pages,
-    words:S.cur.stats.words,at:new Date().toISOString(),md:S.cur.markdown.slice(0,900000),
-    structure:{meta:S.cur.structure.meta,outline:S.cur.structure.outline}};
-  S.lib.unshift(rec);
-  if(S.lib.length>14)S.lib.pop();
-  const ok=store.set(LS.lib,S.lib);
-  if(!ok){S.lib.shift();toast('المكتبة ممتلئة','المساحة المحلية غير كافية — نزّل الملف بدل الحفظ','w');return}
-  renderLib();leds();toast('حُفظ محليًا',rec.title+' · id='+rec.id,'i');
-}
-function renderLib(){
-  const g=$('#libGrid');
-  if(!S.lib.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">المكتبة فارغة.</div>';return}
-  g.innerHTML=S.lib.map(d=>`
-    <div class="lib-card">
-      <b>${escH(d.title)}</b>
-      <p>${d.id} · ${d.pages}p · ${d.words}w · ${new Date(d.at).toLocaleDateString('ar',{day:'2-digit',month:'short'})}</p>
-      <div class="lib-acts">
-        <button class="btn xs" data-open="${d.id}">فتح</button>
-        <button class="btn xs" data-dlp="${d.id}">↓ .md</button>
-        <button class="btn xs mint" data-push="${d.id}">⇪ إرسال</button>
-        <button class="btn xs gh" data-copy="${d.id}">⧉ id</button>
-        <button class="btn xs gh" data-rm="${d.id}">×</button>
-      </div>
-    </div>`).join('');
-  const find=id=>S.lib.find(x=>x.id===id);
-  $$('[data-open]',g).forEach(b=>b.onclick=()=>{const d=find(b.dataset.open);
-    const st=buildStructure(d.md,[],{title:d.title,fileName:d.source,pagesCount:d.pages,words:d.words,rtl:isRTL(d.md.slice(0,2000))});
-    applyResult({markdown:d.md,structure:st,blocks:[],warns:[],meta:st.meta,fileName:d.source||d.title,
-      stats:{pages:d.pages,words:d.words,chars:d.md.length,headings:(d.md.match(/^#{1,6} /gm)||[]).length,
-        tables:st.tables.length,lists:0,paras:0,bodySize:0,columns:1,read:Math.max(1,Math.round(d.words/220)),density:100}});
-    document.getElementById('studio').scrollIntoView({behavior:'smooth'})});
-  $$('[data-dlp]',g).forEach(b=>b.onclick=()=>{const d=find(b.dataset.open||b.dataset.dlp);dl((d.title||'doc')+'.md',d.md,'text/markdown')});
-  $$('[data-push]',g).forEach(b=>b.onclick=async()=>{const d=find(b.dataset.push);const ep=selEp();
-    if(!ep)return toast('لا نقطة','اختر نقطة نهاية','w');
-    const st=buildStructure(d.md,[],{title:d.title,fileName:d.source,pagesCount:d.pages,words:d.words,rtl:false});
-    await pushTo(ep,{markdown:d.md,structure:st,stats:{pages:d.pages,words:d.words},warns:[],meta:{title:d.title,fileName:d.source},fileName:d.source})});
-  $$('[data-copy]',g).forEach(b=>b.onclick=()=>copy(b.dataset.copy,'نُسخ المعرّف'));
-  $$('[data-rm]',g).forEach(b=>b.onclick=()=>{S.lib=S.lib.filter(x=>x.id!==b.dataset.rm);store.set(LS.lib,S.lib);renderLib();leds()});
-}
-
-/* ---------- downloads / clipboard ---------- */
-function dl(name,text,type){
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type||'text/plain'}));
-  a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);log('تنزيل: '+name,'lg-ok');
-}
-async function copy(t,msg){
-  try{await navigator.clipboard.writeText(t)}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove()}
-  toast(msg||'تم النسخ',t.length>60?t.slice(0,50)+'… ('+t.length+' حرف)':t,'i');
-}
-$('#btnCopy').onclick=()=>copy(S.cur?S.cur.markdown:$('#mdRaw').value,'نسخ Markdown');
-$('#btnDlMd').onclick=()=>{if(!S.cur)return;dl(((S.cur.meta.title||'document').replace(/[\\/:*?"<>|]/g,'_'))+'.md',S.cur.markdown,'text/markdown')};
-$('#btnDlJson').onclick=()=>{if(!S.cur)return;const o={meta:S.cur.structure.meta,outline:S.cur.structure.outline,tables:S.cur.structure.tables,extracted:extractedJSON(runRules(S.cur.markdown))};
-  dl(((S.cur.meta.title||'document'))+'.json',JSON.stringify(o,null,2),'application/json')};
-$('#btnDlBundle').onclick=()=>{if(!S.cur)return;
-  const ex=extractedJSON(runRules(S.cur.markdown));
-  const html='<!doctype html><meta charset="utf-8"><title>bundle</title><body><pre id="md">'+escH(S.cur.markdown)+
-    '</pre><script id="data" type="application/json">'+escH(JSON.stringify({meta:S.cur.structure.meta,outline:S.cur.structure.outline,tables:S.cur.structure.tables,extracted:ex}))+'<\/script></body>';
-  dl(((S.cur.meta.title||'document'))+'.bundle.html',html,'text/html');
-  toast('حزمة جاهزة','ملف واحد يحوي Markdown + JSON مضمَّنًا','i')};
-$('#btnBeautify').onclick=()=>{
-  if(!S.cur)return;
-  let md=S.cur.markdown.replace(/[ \t]+$/gm,'').replace(/\n{3,}/g,'\n\n').replace(/([^\n])\n(#{1,6} )/g,'$1\n\n$2');
-  S.cur.markdown=md;$('#mdRaw').value=md;paintPreview();paintJSON();syncPushView();toast('تنسيق','أُعيد ضبط الفراغات','i');
-};
-$('#btnSaveLib').onclick=saveLib;
-$('#btnPushNow').onclick=$('#btnPush').onclick=()=>{const ep=selEp();ep?pushTo(ep,S.cur):openEp(null)};
-$('#btnPing').onclick=()=>{const ep=selEp();ep?ping(ep):toast('لا نقطة','أضف نقطة نهاية','w')};
-$('#btnPreviewReq').onclick=()=>{
-  const ep=selEp();const box=$('#reqPrev');
-  if(box.style.display==='block'){box.style.display='none';return}
-  if(!ep||!S.cur){toast('ناقص','اختر نقطة ولديك نتيجة','w');return}
-  const p=prune(buildPayload(S.cur,ep));
-  box.style.display='block';
-  box.textContent=(ep.method||'POST')+' '+targetUrl(ep)+'\n'+
-    ['Content-Type: '+(ep.mode==='form'?'multipart/form-data':'application/json'),
-     ...Object.entries({...parseHeaders(ep.headers),...authHdrs(ep)}).map(([k,v])=>k+': '+v)].join('\n')+
-    '\n\n'+(ep.mode==='form'?'--form file=@'+(S.cur.fileName||'doc')+'.md  (text/markdown)\n--form title=...\n--form structure=<json string>\n--form extracted=<json string>'
-      :JSON.stringify(p,null,2).replace(/"markdown": "[\s\S]{40,}"/,'"markdown": "…'+p.markdown.length+' chars…"'));
-};
-$('#btnPull').onclick=pull;
-$('#snipLang').onchange=paintSnip;
-$('#btnCopySnip').onclick=()=>copy(window.__snip,'نسخ الكود');
-$('#subtabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;
-  $$('#subtabs button').forEach(x=>x.classList.toggle('on',x===b));
-  $$('.subpane').forEach(p=>p.classList.toggle('on',p.dataset.s===b.dataset.s));};
-$('#btnOcr').onclick=async()=>{
-  const ep=S.eps.find(e=>e.id===$('#ocrEp').value);
-  const f=S.files.find(x=>x.kind==='pdf'&&x.buffer);
-  if(!ep||!f)return toast('غير متاح','اختر نقطة نهاية وملف PDF أصليًا','w');
-  log('إرسال '+f.name+' إلى خدمة OCR…','lg-w');
-  try{
-    const fd=new FormData();fd.append('file',new Blob([f.buffer],{type:'application/pdf'}),f.name);fd.append('engine','auto');
-    const {res,ms}=await doFetch(targetUrl(ep),{method:'POST',body:fd,headers:{...parseHeaders(ep.headers),...authHdrs(ep)}});
-    const txt=await res.text();
-    $('#pushResp').style.display='block';$('#pushResp').textContent='HTTP '+res.status+' · '+ms+'ms\n'+txt.slice(0,800);
-    log('← OCR '+res.status,res.ok?'lg-ok':'lg-e');
-    if(res.ok){try{const j=JSON.parse(txt);const md=j.markdown||j.text||dig(j,ep.pullPath);
-      if(md){S.cur.markdown=S.cur.markdown+'\n\n<!-- OCR -->\n\n'+md;$('#mdRaw').value=S.cur.markdown;paintPreview();toast('OCR','أُضيف النص المستعرَض','i')}}catch(e){}}
-  }catch(e){toast('فشل OCR',String(e.message||e),'e')}
-};
-
-/* ---------- heartbeat ---------- */
-$('#btnHb').onclick=()=>{
-  if(S.hb.on){clearInterval(S.hb.timer);S.hb.on=false;$('#btnHb').textContent='▶ تشغيل المراقبة';$('#hbState').textContent='OFF';$('#hbState').className='q-st';return}
-  const ep=selEp();if(!ep)return toast('لا نقطة','اختر نقطة نهاية','w');
-  const every=Math.max(5,+$('#hbEvery').value||30)*1000;
-  S.hb.on=true;$('#btnHb').textContent='■ إيقاف المراقبة';$('#hbState').textContent='LIVE';$('#hbState').className='q-st work';
-  log('مراقبة كل '+every/1000+'ث → '+ep.name,'lg-i');
-  const run=async()=>{const r=await ping(ep);S.hb.ok+=r.ok?1:0;S.hb.bad+=r.ok?0:1;
-    S.hb.last=nowT();S.hb.lat=r.ms?r.ms+'ms':'—';
-    $('#hbLast').textContent=S.hb.last;$('#hbLat').textContent=S.hb.lat;$('#hbRatio').textContent=S.hb.ok+' / '+S.hb.bad;
-    $('#hbState').textContent=r.ok?'UP':'DOWN';$('#hbState').className='q-st '+(r.ok?'done':'err')};
-  run();S.hb.timer=setInterval(run,every);
-};
-
-/* =====================================================================
-   INPUT / DND / SHORTCUTS
-   ===================================================================== */
-const dz=$('#drop');
-['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{
-  if(!e.dataTransfer||![...e.dataTransfer.items||[]].some(i=>i.kind==='file'))return;
-  e.preventDefault();dz.classList.add('hot');$('#slabChip').textContent='RELEASE';}));
-['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{
-  if(ev==='drop')e.preventDefault();
-  if(ev==='dragleave'&&e.relatedTarget&&dz.contains(e.relatedTarget))return;
-  dz.classList.remove('hot');$('#slabChip').textContent=S.cur?'DONE':'IDLE';}));
-document.addEventListener('drop',async e=>{
-  if(!e.dataTransfer||!e.dataTransfer.files.length)return;
-  e.preventDefault();await addFiles([...e.dataTransfer.files]);
-});
-dz.onclick=()=>$('#filePick').click();
-$('#btnPick').onclick=$('#btnPickTop').onclick=()=>$('#filePick').click();
-$('#filePick').onchange=e=>{addFiles([...e.target.files]);e.target.value=''};
-document.addEventListener('paste',e=>{
-  const fs=[...(e.clipboardData&&e.clipboardData.files||[])];if(fs.length){e.preventDefault();addFiles(fs)}});
-$$('.sw[data-cfg]').forEach(s=>s.onclick=()=>{s.classList.toggle('on');S.cfg[s.dataset.cfg]=s.classList.contains('on')?1:0;
-  store.set(LS.cfg,S.cfg);log('إعداد: '+s.querySelector('span').textContent+' = '+(S.cfg[s.dataset.cfg]?'ON':'OFF'),'lg-t')});
-$('#cfgWrap').onchange=e=>{S.cfg.wrap=e.target.value;store.set(LS.cfg,S.cfg)};
-$('#profileSel').onchange=e=>{
-  const P={general:{columns:1,headings:1,lists:1,tables:1,furniture:1,code:1,links:0,frontmatter:0,pageMarks:1,escape:0,wrap:'flow'},
-   arabic:{columns:1,headings:1,lists:1,tables:1,furniture:1,code:0,links:0,frontmatter:1,pageMarks:1,escape:0,wrap:'flow'},
-   sci:{columns:1,headings:1,lists:1,tables:1,furniture:1,code:1,links:1,frontmatter:1,pageMarks:0,escape:1,wrap:'flow'},
-   invoice:{columns:0,headings:0,lists:0,tables:1,furniture:1,code:0,links:0,frontmatter:0,pageMarks:0,escape:1,wrap:'keep'}};
-  Object.assign(S.cfg,P[e.target.value]);store.set(LS.cfg,S.cfg);
-  $$('.sw[data-cfg]').forEach(s=>s.classList.toggle('on',!!S.cfg[s.dataset.cfg]));
-  $('#cfgWrap').value=S.cfg.wrap;log('ملف تعريف: '+e.target.selectedOptions[0].text,'lg-i');
-  if(S.cur&&S.files.some(f=>f.buffer))toast('ملف التعريف مطبَّق','أعد تشغيل التحويل لتطبيق البنية الجديدة','i');
-};
-$('#btnConvertAll').onclick=()=>{ if(!S.files.some(f=>f.status==='queued'&&f.kind==='pdf'))
-  return toast('لا شيء في الطابور','الملفات المحوَّلة تبقى منتهية — احذفها وأعد إفلاتها','w'); runQueue(); };
-document.addEventListener('keydown',e=>{
-  const m=e.metaKey||e.ctrlKey;
-  if(m&&e.key.toLowerCase()==='o'){e.preventDefault();$('#filePick').click()}
-  if(m&&e.key.toLowerCase()==='s'){e.preventDefault();saveLib()}
-  if(m&&e.shiftKey&&e.key.toLowerCase()==='c'){e.preventDefault();copy(S.cur?S.cur.markdown:'','نسخ Markdown')}
-  if(e.key==='Escape')$('#epModal').classList.remove('on');
-});
-$('#btnDemo').onclick=()=>{
-  const md=['---','title: "لائحة خدمات مالية — نموذج"','source: demo.pdf','pages: 3','lang: ar','---','',
-  '# اللائحة التنفيذية للخدمات المالية','',
-  '> صدرت بموجب القرار رقم ١٤٤٢/٣٧ وتعمل بها الجهة المختصة من تاريخ الاعلان.',
-  '','## الباب الأول: تعريفات','',
-  '- **المنصة**: البيئة الإلكترونية التي تُقدَّم من خلالها الخدمات.',
-  '- **المستفيد**: كل شخص طبيعي أو اعتباري يطلب خدمة.',
-  '- **الموثّق**: الموظف المسؤول عن مراجعة البيانات.','',
-  '### المادة (1) — نطاق التطبيق','',
-  'تسري أحكام هذه اللائحة على جميع الطلبات الواردة إلكترونيًا، بما في ذلك الملفات المرفقة بصيغة PDF والتي يُعاد بناؤها إلى نص سليم البنية.',
-  '',
-  '### المادة (2) — الرسوم','',
-  '| البند | الخدمة | الرسم | المدة |','|---|---|---|---|',
-  '| 1 | تسجيل تجاري | 2,400 ريال | 3 أيام عمل |','| 2 | شهادة امتثال | 1,150 ريال | يوم عمل واحد |',
-  '| 3 | تجديد سنوي | 3,700 ريال | 5 أيام عمل |','',
-  '#### للتواصل','',
-  '- هاتف: +966 11 234 5678','- بريد: services@example.gov.sa','- رابط: https://example.gov.sa/api/docs/42.md','',
-  '```','GET /v1/documents/42.md','Accept: text/markdown','```','',
-  '---','','## الباب الثاني: الجزاءات','',
-  'يُعاقب كل من يثبت تقديمه بيانات غير صحيحة بغرامة لا تتجاوز 50,000 ريال، مع إلغاءTrخيص في حالة العود.'].join('\n');
-  const st=buildStructure(md,[],{title:'لائحة خدمات مالية — نموذج',fileName:'demo.pdf',pagesCount:3,words:(md.match(/\S+/g)||[]).length,rtl:true});
-  const r={markdown:md,structure:st,blocks:[],warns:[],meta:st.meta,fileName:'demo.pdf',
-    stats:{pages:3,words:(md.match(/\S+/g)||[]).length,chars:md.length,headings:(md.match(/^#{1,6} /gm)||[]).length,
-      tables:st.tables.length,lists:(md.match(/^\s*[-*+] /gm)||[]).length,paras:0,bodySize:11,columns:1,
-      read:1,density:100}};
-  S.files.push({id:uid('f'),name:'demo.pdf',size:md.length,kind:'pdf',status:'done',progress:1,result:r,pages:3});
-  applyResult(r);renderQueue();
-  if(!S.eps.length){openEp(null);$('#epName').value='منصتي التجريبية';$('#epUrl').value='https://api.example.gov.sa/v1/documents';$('#epField').value='markdown';$('#epAuth').value='bearer';$('#epToken').value='sk_demo_9912'}
-  toast('نموذج محمَّل','جرّب التبويبات ثم «عرض الطلب المتوقع»','i');
-  document.getElementById('studio').scrollIntoView({behavior:'smooth'});
-};
-
-/* =====================================================================
-   AMBIENT
-   ===================================================================== */
-(function ambient(){
-  const toks=['#','##','###','- [ ]','|  ---  |','**bold**','[نص](رابط)','> اقتباس','1.','```','---','<br>','$id','{{var}}','· ','«md»'];
-  const g=$('#glyphs');
-  for(let i=0;i<16;i++){
-    const s=document.createElement('span');s.className='glyph';s.textContent=toks[i%toks.length];
-    s.style.left=(Math.random()*98)+'%';s.style.top=(Math.random()*100+20)+'%';
-    s.style.fontSize=(11+Math.random()*22)+'px';
-    s.style.animationDuration=(26+Math.random()*34)+'s';s.style.animationDelay=(-Math.random()*40)+'s';
-    if(i%5===0)s.style.color='rgba(245,166,35,.12)';if(i%7===0)s.style.color='rgba(63,217,164,.12)';
-    g.appendChild(s);
+async function pingEndpoint(ep){
+  if(!ep){
+    toast("اختر نقطة نهاية", "warn");
+    return;
   }
-  let raf=null;
-  addEventListener('pointermove',e=>{if(raf)return;raf=requestAnimationFrame(()=>{
-    $('#glow').style.setProperty('--mx',e.clientX+'px');$('#glow').style.setProperty('--my',e.clientY+'px');raf=null})},{passive:true});
-  const io=new IntersectionObserver(en=>en.forEach(x=>{if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}}),{threshold:.12});
-  $$('.reveal').forEach(el=>io.observe(el));
-  setInterval(leds,20000);
-})();
 
-/* =====================================================================
-   BOOT
-   ===================================================================== */
-function boot(){
-  const c=store.get(LS.cfg,null);if(c)Object.assign(S.cfg,c);
-  $$('.sw[data-cfg]').forEach(s=>s.classList.toggle('on',!!S.cfg[s.dataset.cfg]));
-  $('#cfgWrap').value=S.cfg.wrap||'flow';
-  S.eps=store.get(LS.eps,[])||[];S.eps.forEach(e=>e._ok=undefined);S.selEp=S.eps[0]?S.eps[0].id:null;
-  S.lib=store.get(LS.lib,[])||[];loadRules();
-  renderQueue();renderEps();renderLib();paintExtract();paintTables();paintContract();paintSnip();syncPushView();paintWarns();
-  moveInd();addEventListener('resize',moveInd);
-  log('سَنَد جاهز · لا شيء يُرفع قبل أمرك','lg-ok');
-  log('اضغط ⌘/Ctrl+O لاختيار ملف، أو أفلته على اللوحة','lg-t');
-  engine().catch(e=>{log('تحذير: '+e.message,'lg-w');$('#ledEngine').className='led err';$('#ledEngine').lastChild.textContent='ENGINE OFFLINE'});
-  leds();
+  ep._status = "wait";
+  renderEndpoints();
+
+  try {
+    var init = {
+      method: ep.method === "GET" ? "GET" : "POST",
+      headers: Object.assign(
+        { "Content-Type": "application/json" },
+        parseHeaders(ep.headers),
+        authHeaders(ep)
+      )
+    };
+
+    if(ep.method !== "GET"){
+      init.body = JSON.stringify({ ping: true, at: new Date().toISOString() });
+    }
+
+    var t0 = performance.now();
+    var res = await fetchWithTimeout(ep.url, init, 15000);
+    var ms = Math.round(performance.now() - t0);
+    var text = await res.text();
+
+    ep._status = (res.ok || res.status < 500) ? "ok" : "bad";
+
+    persistEndpoints();
+    renderEndpoints();
+
+    showApiResponse("PING " + res.status + " · " + ms + "ms · " + ep.name, text.slice(0, 2000));
+
+    toast(res.ok ? "الاتصال يعمل" : "الخادم رد: " + res.status, res.ok ? "ok" : "warn");
+  } catch(e){
+    ep._status = "bad";
+    persistEndpoints();
+    renderEndpoints();
+
+    showApiResponse("PING FAILED · " + ep.name, e.message + "\n\nغالبًا CORS أو رابط غير صحيح.");
+    toast("تعذّر الاتصال: " + e.message, "error");
+  }
 }
-boot();
+
+function getPath(obj, path){
+  return String(path || "").split(".").filter(Boolean).reduce(function(cur, key){
+    return cur == null ? undefined : cur[key];
+  }, obj);
+}
+
+async function pullFromUrl(){
+  var url = $("#pullUrl").value.trim();
+  var path = $("#pullPath").value.trim();
+  var ep = getSelectedEndpoint();
+
+  if(!url && ep && ep.url) url = ep.url;
+  if(!path && ep && ep.pullPath) path = ep.pullPath;
+
+  if(!/^https?:\/\//i.test(url)){
+    toast("أدخل رابطًا صحيحًا", "warn");
+    return;
+  }
+
+  showApiResponse("جارٍ الجلب ...", url);
+
+  try {
+    var res = await fetchWithTimeout(url, {
+      method: "GET",
+      headers: { Accept: "text/markdown,application/json,text/plain,*/*" }
+    }, 30000);
+
+    var text = await res.text();
+    var md = text;
+    var name = url.split("/").pop() || "remote.md";
+
+    try {
+      var j = JSON.parse(text);
+      var val = path
+        ? getPath(j, path)
+        : (j.markdown || j.content || (j.data && (j.data.markdown || (j.data.attributes && j.data.attributes.markdown))));
+
+      if(typeof val === "string"){
+        md = val;
+        name = (j.title || (j.data && j.data.id) || name) + ".md";
+      }
+    } catch(e){}
+
+    var doc = makeDocFromMarkdown(name, md, "md", new Blob([md]).size, {});
+    addDoc(doc);
+
+    showApiResponse("تم الجلب · HTTP " + res.status, md.slice(0, 2000));
+    toast("تم جلب الملف", "ok");
+  } catch(e){
+    showApiResponse("جلب فشل", e.message + "\n\nتحقق من CORS على الخادم.");
+    toast("فشل الجلب: " + e.message, "error");
+  }
+}
+
+/* ---------- actions ---------- */
+
+async function handleAction(action, id){
+  var doc = getCurrentDoc();
+  var ep = getSelectedEndpoint();
+
+  if(action === "pick"){
+    $("#fileInput").click();
+  }
+  else if(action === "demo"){
+    addDoc(makeDocFromMarkdown("demo.md", demoMarkdown(), "md", 0, {}));
+  }
+  else if(action === "clearDocs"){
+    state.docs = [];
+    state.currentId = null;
+    persistSavedDocs();
+    renderDocs();
+    renderCurrent();
+  }
+  else if(action === "openDoc"){
+    setCurrentDoc(id);
+  }
+  else if(action === "deleteDoc"){
+    deleteDoc(id);
+  }
+  else if(action === "copyMd"){
+    if(doc) copyText(doc.markdown);
+    else toast("لا مستند", "warn");
+  }
+  else if(action === "downloadMd"){
+    if(doc) downloadFile(safeFileName(doc.name) + ".md", doc.markdown, "text/markdown;charset=utf-8");
+    else toast("لا مستند", "warn");
+  }
+  else if(action === "downloadJson"){
+    if(doc){
+      downloadFile(
+        safeFileName(doc.name) + ".json",
+        JSON.stringify({
+          meta: doc.structure.meta,
+          outline: doc.structure.outline,
+          extracted: doc.extracted,
+          markdown: doc.markdown
+        }, null, 2),
+        "application/json;charset=utf-8"
+      );
+    } else {
+      toast("لا مستند", "warn");
+    }
+  }
+  else if(action === "saveDoc"){
+    if(!doc) return toast("لا مستند", "warn");
+    doc.saved = true;
+    persistSavedDocs();
+    renderDocs();
+    toast("حُفظ محليًا", "ok");
+  }
+  else if(action === "pushCurrent"){
+    await pushDoc(doc, ep);
+  }
+  else if(action === "newEndpoint"){
+    openEndpointForm(null);
+  }
+  else if(action === "editEndpoint"){
+    var e2 = state.endpoints.filter(function(x){ return x.id === id; })[0];
+    if(e2) openEndpointForm(e2);
+  }
+  else if(action === "deleteEndpoint"){
+    deleteEndpoint(id);
+  }
+  else if(action === "selectEndpoint"){
+    selectEndpoint(id);
+  }
+  else if(action === "saveEndpoint"){
+    saveEndpointFromForm();
+  }
+  else if(action === "cancelEndpoint"){
+    closeEndpointForm();
+  }
+  else if(action === "pingEndpoint"){
+    await pingEndpoint(ep);
+  }
+  else if(action === "pullUrl"){
+    await pullFromUrl();
+  }
+  else if(action === "copySnippet"){
+    copyText($("#snippet").textContent);
+  }
+}
+
+function demoMarkdown(){
+  return "# مستند تجريبي\n\n" +
+    "## الباب الأول\n" +
+    "- المادة 1: تسري الأحكام على الطلبات الإلكترونية.\n" +
+    "- المادة 2: الرسوم موضحة في البيانات المستخرجة.\n\n" +
+    "### بيانات تواصل\n" +
+    "- هاتف: +966 11 234 5678\n" +
+    "- بريد: services@example.gov.sa\n" +
+    "- رابط: https://example.gov.sa/api/docs/42.md\n\n" +
+    "> ملاحظة: هذا مستند تجريبي لاختبار الربط والاستخراج.\n";
+}
+
+function safeFileName(name){
+  return String(name || "document")
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .replace(/\.(pdf|md|markdown|txt)$/i, "");
+}
+
+async function copyText(text){
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("تم النسخ", "ok");
+  } catch(e){
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+
+    try {
+      document.execCommand("copy");
+      toast("تم النسخ", "ok");
+    } catch(e2){
+      toast("تعذّر النسخ", "error");
+    }
+
+    ta.remove();
+  }
+}
+
+function downloadFile(filename, content, mime){
+  var blob = new Blob([content], { type: mime || "text/plain;charset=utf-8" });
+  var a = document.createElement("a");
+
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(function(){
+    URL.revokeObjectURL(a.href);
+  }, 1500);
+
+  log("تنزيل: " + filename, "ok");
+}
+
+/* ---------- events ---------- */
+
+function bindEvents(){
+  document.addEventListener("click", function(e){
+    var actionEl = e.target.closest("[data-action]");
+
+    if(actionEl){
+      e.preventDefault();
+      var action = actionEl.getAttribute("data-action");
+      var id = actionEl.getAttribute("data-id");
+
+      handleAction(action, id).catch(function(err){
+        log("خطأ في الزر " + action + ": " + err.message, "error");
+        toast("خطأ: " + err.message, "error");
+      });
+
+      return;
+    }
+
+    var tabEl = e.target.closest(".tab");
+    if(tabEl){
+      $$(".tab").forEach(function(t){
+        t.classList.toggle("active", t === tabEl);
+      });
+
+      $$(".pane").forEach(function(p){
+        p.classList.toggle("active", p.id === "pane-" + tabEl.getAttribute("data-tab"));
+      });
+
+      return;
+    }
+
+    var epEl = e.target.closest(".endpoint");
+    if(epEl){
+      selectEndpoint(epEl.getAttribute("data-ep"));
+      return;
+    }
+
+    var docEl = e.target.closest(".doc");
+    if(docEl){
+      setCurrentDoc(docEl.getAttribute("data-doc"));
+      return;
+    }
+  });
+
+  $("#fileInput").addEventListener("change", function(e){
+    handleFiles(e.target.files);
+    e.target.value = "";
+  });
+
+  $("#mdEditor").addEventListener("input", debounce(function(){
+    var d = getCurrentDoc();
+    if(!d) return;
+
+    d.markdown = $("#mdEditor").value;
+    d.stats = computeStats(d.markdown);
+    d.structure = buildStructure(d.markdown, d.name);
+    d.extracted = extractData(d.markdown);
+
+    refreshViews();
+  }, 250));
+
+  $("#snippetLang").addEventListener("change", renderSnippet);
+
+  var dragCounter = 0;
+  var dropCard = $("#dropCard");
+
+  window.addEventListener("dragenter", function(e){
+    e.preventDefault();
+    dragCounter++;
+    dropCard.classList.add("hot");
+  });
+
+  window.addEventListener("dragover", function(e){
+    e.preventDefault();
+    if(e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+  });
+
+  window.addEventListener("dragleave", function(e){
+    dragCounter--;
+    if(dragCounter <= 0){
+      dragCounter = 0;
+      dropCard.classList.remove("hot");
+    }
+  });
+
+  window.addEventListener("drop", function(e){
+    e.preventDefault();
+    dragCounter = 0;
+    dropCard.classList.remove("hot");
+
+    if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){
+      handleFiles(e.dataTransfer.files);
+    }
+  });
+
+  window.addEventListener("paste", function(e){
+    if(e.clipboardData && e.clipboardData.files && e.clipboardData.files.length){
+      e.preventDefault();
+      handleFiles(e.clipboardData.files);
+    }
+  });
+
+  window.addEventListener("error", function(e){
+    log("JS Error: " + e.message, "error");
+  });
+
+  window.addEventListener("unhandledrejection", function(e){
+    var r = e.reason;
+    log("Promise Error: " + (r && r.message ? r.message : r), "error");
+  });
+}
+
+function init(){
+  state.endpoints = loadLS(STORAGE.endpoints, []);
+
+  var firstEp = state.endpoints[0];
+  state.selectedEndpointId = firstEp ? firstEp.id : null;
+
+  state.docs = loadSavedDocs();
+
+  var firstDoc = state.docs[0];
+  state.currentId = firstDoc ? firstDoc.id : null;
+
+  renderEndpoints();
+  renderDocs();
+  renderCurrent();
+  bindEvents();
+
+  log("المنصة جاهزة. جرّب الإفلات أو زر اختيار ملف.", "ok");
+
+  getPdfJs().catch(function(e){
+    log("تحذير: " + e.message, "warn");
+  });
+}
+
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+
 })();
 </script>
+
 </body>
 </html>
